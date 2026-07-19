@@ -1,0 +1,31 @@
+<div
+  class="h-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-3 shadow-sm flex flex-col overflow-hidden"
+>
+  <h2
+    class="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-tight mb-2 shrink-0"
+  >
+    Domaines de compétences
+  </h2>
+  @if (series().length > 0 && series().some(v => v > 0)) {
+    <div class="flex-1 flex items-center justify-center min-h-0">
+      <apx-chart
+        class="w-full"
+        [series]="series()"
+        [chart]="chart"
+        [labels]="labels()"
+        [colors]="colors"
+        [stroke]="stroke"
+        [fill]="fill"
+        [legend]="legend"
+        [yaxis]="yaxis"
+        [plotOptions]="plotOptions"
+      />
+    </div>
+  } @else {
+    <div
+      class="flex-1 flex items-center justify-center text-gray-300 italic text-xs text-center px-2"
+    >
+      Aucune donnée — utilisez l'assistant pour générer votre profil
+    </div>
+  }
+</div>

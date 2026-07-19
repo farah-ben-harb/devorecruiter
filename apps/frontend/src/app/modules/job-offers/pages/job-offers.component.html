@@ -1,0 +1,1152 @@
+<div
+  class="flex flex-col h-[calc(100dvh-9rem)] min-h-[70vh] overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg bg-white dark:bg-gray-900"
+>
+  <!-- ═══ EN-TÊTE ═══ -->
+  <div
+    class="flex items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700 shrink-0"
+  >
+    <div class="flex items-center gap-3">
+      <!-- Icône LinkedIn -->
+      <div class="w-9 h-9 rounded-xl bg-[#E2001A]/10 flex items-center justify-center shrink-0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M20 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM8 18H5V10H8V18ZM6.5 8.3C5.5 8.3 4.7 7.5 4.7 6.5C4.7 5.5 5.5 4.7 6.5 4.7C7.5 4.7 8.3 5.5 8.3 6.5C8.3 7.5 7.5 8.3 6.5 8.3ZM19 18H16V13.5C16 12.4 15.1 11.5 14 11.5C12.9 11.5 12 12.4 12 13.5V18H9V10H12V11.3C12.6 10.5 13.7 10 14.9 10C17.2 10 19 11.8 19 14.1V18Z"
+            fill="#E2001A"
+          />
+        </svg>
+      </div>
+      <h1
+        class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white truncate tracking-tight"
+      >
+        Offres LinkedIn
+      </h1>
+    </div>
+
+    <!-- Bouton générer -->
+    <button
+      (click)="openGeneratePanel()"
+      class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#E2001A] text-white text-sm font-medium hover:bg-red-700 transition-colors shrink-0"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      <span class="hidden sm:inline">Générer une offre</span>
+      <span class="sm:hidden">Générer</span>
+    </button>
+  </div>
+
+  <!-- ═══ PANNEAU GÉNÉRATION ═══ -->
+  @if (showGeneratePanel) {
+    <!-- Overlay cliquable pour fermer -->
+    <div
+      class="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+      role="button"
+      aria-label="Fermer le panneau"
+      tabindex="0"
+      (click)="closeGeneratePanel()"
+      (keydown.escape)="closeGeneratePanel()"
+    ></div>
+
+    <!-- Panneau latéral droit -->
+    <div
+      class="fixed right-0 top-0 h-full w-full max-w-md bg-white dark:bg-gray-900 shadow-2xl z-50 flex flex-col border-l border-gray-200 dark:border-gray-700"
+    >
+      <!-- Header -->
+      <div
+        class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-[#E2001A]/10 flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M12 5V19M5 12H19" stroke="#E2001A" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-sm font-semibold text-gray-800 dark:text-white">
+              Générer des offres LinkedIn
+            </h2>
+            <p class="text-xs text-gray-400 mt-0.5">Sélectionnez les fiches de poste unifiées</p>
+          </div>
+        </div>
+        <button
+          (click)="closeGeneratePanel()"
+          class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M18 6L6 18M6 6l12 12"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Recherche -->
+      <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 shrink-0">
+        <div class="relative">
+          <svg
+            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <path
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          <input
+            type="text"
+            placeholder="Rechercher une fiche..."
+            [value]="jobPostSearch()"
+            (input)="jobPostSearch.set($any($event.target).value)"
+            class="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#E2001A] transition"
+          />
+        </div>
+
+        <!-- Sélection globale -->
+        @if (filteredJobPosts().length > 0) {
+          <div class="flex items-center justify-between mt-2.5 px-1">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                [checked]="isAllSelected()"
+                [indeterminate]="isIndeterminate()"
+                (change)="toggleSelectAll()"
+                class="w-4 h-4 rounded border-gray-300 accent-[#E2001A] cursor-pointer"
+              />
+              <span class="text-xs text-gray-500 font-medium">Tout sélectionner</span>
+            </label>
+            @if (selectedCount() > 0) {
+              <span class="text-xs font-semibold text-[#E2001A]">
+                {{ selectedCount() }} sélectionnée(s)
+              </span>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Liste des fiches -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-2">
+        @if (loadingJobPosts()) {
+          <div class="flex items-center justify-center py-12 text-gray-400">
+            <svg class="animate-spin w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none">
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+            Chargement des fiches...
+          </div>
+        } @else if (filteredJobPosts().length === 0) {
+          <div class="flex flex-col items-center justify-center py-12 text-center text-gray-400">
+            <svg class="w-10 h-10 mb-3 text-gray-300" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M9 12H15M9 16H15M17 21H7C5.9 21 5 20.1 5 19V5C5 3.9 5.9 3 7 3H12.6C12.9 3 13.1 3.1 13.3 3.3L18.7 8.7C18.9 8.9 19 9.1 19 9.4V19C19 20.1 18.1 21 17 21Z"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            <p class="text-sm font-medium text-gray-500">Aucune fiche unifiée trouvée</p>
+            <p class="text-xs text-gray-400 mt-1">Unifiez d'abord vos fiches de poste</p>
+          </div>
+        } @else {
+          @for (jp of filteredJobPosts(); track jp.id) {
+            <button
+              (click)="toggleJobPostSelection(jp.id!)"
+              class="w-full flex items-center gap-3 p-3.5 rounded-xl border transition text-left"
+              [class]="
+                isJobPostSelected(jp.id!)
+                  ? 'border-[#E2001A] bg-red-50 dark:bg-red-950/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+              "
+            >
+              <input
+                type="checkbox"
+                [checked]="isJobPostSelected(jp.id!)"
+                (click)="$event.stopPropagation(); toggleJobPostSelection(jp.id!)"
+                class="w-4 h-4 rounded border-gray-300 accent-[#E2001A] cursor-pointer shrink-0"
+              />
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+                  {{ jp.title || jp.name }}
+                </p>
+                @if (jp.company) {
+                  <span
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-100 text-purple-700 mt-1"
+                  >
+                    {{ jp.company }}
+                  </span>
+                }
+              </div>
+              <!-- Badge offre déjà générée -->
+              @if (isAlreadyGenerated(jp.id!)) {
+                <span
+                  class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700"
+                >
+                  ✦ Offre générée
+                </span>
+              }
+            </button>
+          }
+        }
+      </div>
+
+      <!-- Footer génération -->
+      <div class="px-4 py-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
+        <!-- Barre de progression pendant génération -->
+        @if (!!(isGenerating$ | async)) {
+          @if (generatingCount$ | async; as count) {
+            <div class="mb-3 px-3 py-2.5 rounded-xl bg-red-50 border border-[#E2001A]/20">
+              <div class="flex items-center justify-between mb-1.5">
+                <p class="text-xs font-medium text-[#E2001A] flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#E2001A] animate-pulse"></span>
+                  Génération en cours…
+                </p>
+                <span class="text-xs text-gray-500">{{ count.done }} / {{ count.total }}</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-1.5">
+                <div
+                  class="bg-[#E2001A] h-1.5 rounded-full transition-all duration-500"
+                  [style.width.%]="count.total > 0 ? (count.done / count.total) * 100 : 0"
+                ></div>
+              </div>
+            </div>
+          }
+        }
+
+        @if (generateError$ | async; as err) {
+          <p class="mb-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            ⚠️ {{ err }}
+          </p>
+        }
+
+        <div class="flex gap-2">
+          <button
+            (click)="closeGeneratePanel()"
+            class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+          >
+            Annuler
+          </button>
+          <button
+            (click)="generate()"
+            [disabled]="!!(isGenerating$ | async) || selectedCount() === 0"
+            class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#E2001A] hover:bg-red-700 text-sm font-medium text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            @if (!!(isGenerating$ | async)) {
+              <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+              Génération…
+            } @else {
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+              Générer {{ selectedCount() > 0 ? '(' + selectedCount() + ')' : '' }}
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ ERREUR GLOBALE ═══ -->
+  @if (error$ | async; as err) {
+    <div
+      class="mx-4 mt-3 px-4 py-2.5 rounded-lg bg-red-50 text-sm text-red-600 border border-red-200"
+    >
+      ⚠️ {{ err }}
+    </div>
+  }
+
+  <!-- ═══ CORPS ═══ -->
+  <div class="flex flex-1 overflow-hidden">
+    <!-- ── LISTE DES OFFRES ─────────────────────────────────── -->
+    <div
+      class="flex flex-col w-full md:w-80 lg:w-96 border-r border-gray-200 dark:border-gray-700 overflow-y-auto shrink-0"
+    >
+      @if (!!(isLoading$ | async)) {
+        <!-- Skeleton -->
+        <div class="p-3 space-y-3">
+          @for (i of [1, 2, 3]; track i) {
+            <div
+              class="rounded-xl border border-gray-100 dark:border-gray-700 p-4 animate-pulse space-y-2"
+            >
+              <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+              <div class="h-3 bg-gray-100 dark:bg-gray-600 rounded w-1/2"></div>
+              <div class="flex gap-1 mt-2">
+                <div class="h-5 w-14 bg-gray-100 dark:bg-gray-600 rounded-full"></div>
+                <div class="h-5 w-12 bg-gray-100 dark:bg-gray-600 rounded-full"></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- FIX ligne 130 : pas de négation d'async pipe -->
+      @if ((isLoading$ | async) !== true) {
+        @if ((offers$ | async)?.length === 0) {
+          <!-- Empty state -->
+          <div class="flex flex-col items-center justify-center h-full text-center gap-4 p-6">
+            <div
+              class="w-16 h-16 rounded-full bg-red-50 dark:bg-red-950 flex items-center justify-center"
+            >
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M9 12H15M9 16H15M17 21H7C5.9 21 5 20.1 5 19V5C5 3.9 5.9 3 7 3H12.6C12.9 3 13.1 3.1 13.3 3.3L18.7 8.7C18.9 8.9 19 9.1 19 9.4V19C19 20.1 18.1 21 17 21Z"
+                  stroke="#E2001A"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </div>
+            <div>
+              <p class="text-base font-semibold text-gray-800 dark:text-white">
+                Aucune offre générée
+              </p>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Cliquez sur "Générer une offre" pour commencer.
+              </p>
+            </div>
+            <button
+              (click)="showGeneratePanel = true"
+              class="px-4 py-2 rounded-xl bg-[#E2001A] text-white text-sm font-medium hover:bg-red-700 transition-colors"
+            >
+              Générer ma première offre
+            </button>
+          </div>
+        }
+
+        <div class="p-3 space-y-2">
+          @for (offer of offers$ | async; track trackById($index, offer)) {
+            <button
+              (click)="openDetail(offer)"
+              class="group w-full text-left rounded-xl border transition-all duration-150 p-3.5"
+              [class.border-[#E2001A]]="(selectedOffer$ | async)?.id === offer.id"
+              [class.bg-red-50]="(selectedOffer$ | async)?.id === offer.id"
+              [class.dark:bg-red-950\/20]="(selectedOffer$ | async)?.id === offer.id"
+              [class.border-gray-200]="(selectedOffer$ | async)?.id !== offer.id"
+              [class.dark:border-gray-700]="(selectedOffer$ | async)?.id !== offer.id"
+              [class.hover:border-gray-300]="(selectedOffer$ | async)?.id !== offer.id"
+              [class.hover:bg-gray-50]="(selectedOffer$ | async)?.id !== offer.id"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-gray-800 dark:text-white truncate">
+                    {{ offer.titre }}
+                  </p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                    {{ offer.accroche }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Hashtags -->
+              <div class="flex flex-wrap gap-1 mt-2">
+                @for (tag of offer.hashtags.slice(0, 3); track tag) {
+                  <span
+                    class="text-xs px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                  >
+                    {{ tag }}
+                  </span>
+                }
+                @if (offer.hashtags.length > 3) {
+                  <span
+                    class="text-xs px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-400"
+                  >
+                    +{{ offer.hashtags.length - 3 }}
+                  </span>
+                }
+              </div>
+
+              <!-- Date + actions -->
+              <div class="flex items-center justify-between mt-2">
+                <span class="text-xs text-gray-400">{{ formatDate(offer.createdAt) }}</span>
+                <div
+                  class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <button
+                    (click)="openEdit(offer, $event)"
+                    class="p-1.5 rounded-lg hover:bg-white dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 transition-colors"
+                    title="Modifier"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                      <path
+                        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    (click)="openDelete(offer.id, $event)"
+                    class="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                    title="Supprimer"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M3 6h2l1.4 14.3c.1.9.9 1.7 1.8 1.7h8.4c.9 0 1.7-.8 1.8-1.7L19 6h2M8 6V4c0-.6.4-1 1-1h6c.6 0 1 .4 1 1v2"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- ── PANNEAU DÉTAIL ───────────────────────────────────── -->
+    @if (showDetailPanel && (selectedOffer$ | async); as offer) {
+      <div class="flex flex-col flex-1 overflow-hidden">
+        <!-- Header détail -->
+        <div
+          class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0"
+        >
+          <div class="flex-1 min-w-0">
+            <p class="text-base font-semibold text-gray-800 dark:text-white truncate">
+              {{ offer.titre }}
+            </p>
+            <p class="text-xs text-gray-500 truncate">{{ offer.accroche }}</p>
+          </div>
+          <div class="flex items-center gap-2 ml-3">
+            <!-- Edit -->
+            <button
+              (click)="openFullEdit(offer, $event)"
+              class="p-2 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+              title="Modifier le contenu"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                />
+              </svg>
+            </button>
+            <!-- Delete -->
+            <button
+              (click)="openDelete(offer.id, $event)"
+              class="p-2 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M3 6h2l1.4 14.3c.1.9.9 1.7 1.8 1.7h8.4c.9 0 1.7-.8 1.8-1.7L19 6h2M8 6V4c0-.6.4-1 1-1h6c.6 0 1 .4 1 1v2"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <!-- Fermer -->
+            <button
+              (click)="closeDetail()"
+              class="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M18 6L6 18M6 6l12 12"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex gap-1 px-4 pt-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+          <button
+            (click)="setTab('linkedin')"
+            class="px-3 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-px"
+            [class.border-[#E2001A]]="activeTab === 'linkedin'"
+            [class.text-[#E2001A]]="activeTab === 'linkedin'"
+            [class.border-transparent]="activeTab !== 'linkedin'"
+            [class.text-gray-500]="activeTab !== 'linkedin'"
+          >
+            📋 Post LinkedIn
+          </button>
+          <button
+            (click)="setTab('details')"
+            class="px-3 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-px"
+            [class.border-[#E2001A]]="activeTab === 'details'"
+            [class.text-[#E2001A]]="activeTab === 'details'"
+            [class.border-transparent]="activeTab !== 'details'"
+            [class.text-gray-500]="activeTab !== 'details'"
+          >
+            📊 Détails
+          </button>
+        </div>
+
+        <!-- Contenu tabs -->
+        <div class="flex-1 overflow-y-auto p-4">
+          <!-- Bouton Tout copier — visible uniquement sur l'onglet Détails -->
+          @if (activeTab === 'details') {
+            <div class="flex justify-end mb-3">
+              <button
+                (click)="copyDetails(offer)"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                [class.bg-emerald-100]="copiedDetails"
+                [class.text-emerald-700]="copiedDetails"
+                [class.bg-gray-100]="!copiedDetails"
+                [class.text-gray-600]="!copiedDetails"
+                [class.hover:bg-gray-200]="!copiedDetails"
+              >
+                @if (copiedDetails) {
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M20 6L9 17L4 12"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  Copié !
+                } @else {
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M8 5H6C4.9 5 4 5.9 4 7V19C4 20.1 4.9 21 6 21H16C17.1 21 18 20.1 18 19V17M8 5C8 6.1 8.9 7 10 7H14C15.1 7 16 6.1 16 5M8 5C8 3.9 8.9 3 10 3H14C15.1 3 16 3.9 16 5V7H18C19.1 7 20 7.9 20 9V13"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                  Copier
+                }
+              </button>
+            </div>
+          }
+
+          @if (activeTab === 'linkedin') {
+            <!-- Format LinkedIn — rendu visuel riche -->
+            <div class="space-y-5">
+              <!-- En-tête de la carte post -->
+              <div
+                class="rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm"
+              >
+                <!-- Barre supérieure colorée -->
+                <div
+                  class="h-1.5 w-full bg-linear-to-r from-[#E2001A] via-red-400 to-orange-400"
+                ></div>
+
+                <!-- Fausse topbar LinkedIn -->
+                <div
+                  class="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+                >
+                  <div class="flex items-center gap-2.5">
+                    <div>
+                      <p class="text-xs font-semibold text-gray-800 dark:text-white leading-tight">
+                        {{ offer.titre }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Droite : badge LinkedIn + bouton Tout copier -->
+                  <div class="flex items-center gap-2">
+                    <!-- Badge LinkedIn -->
+                    <div class="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#0A66C2]/10">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="#0A66C2">
+                        <path
+                          d="M20.45 20.45H16.9v-5.57c0-1.33-.03-3.03-1.85-3.03-1.85 0-2.13 1.45-2.13 2.94v5.66H9.37V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.35-1.85 3.58 0 4.24 2.36 4.24 5.43v6.31zM5.34 7.43a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm1.72 13.02H3.62V9h3.44v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"
+                        />
+                      </svg>
+                      <span class="text-[10px] font-semibold text-[#0A66C2]">LinkedIn</span>
+                    </div>
+
+                    <!-- Bouton Tout copier -->
+                    <button
+                      (click)="copyLinkedinFull(offer)"
+                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
+                      [class.bg-emerald-100]="copiedLinkedinFull"
+                      [class.text-emerald-700]="copiedLinkedinFull"
+                      [class.bg-white]="!copiedLinkedinFull"
+                      [class.dark:bg-gray-700]="!copiedLinkedinFull"
+                      [class.text-gray-600]="!copiedLinkedinFull"
+                      [class.dark:text-gray-300]="!copiedLinkedinFull"
+                      [class.border]="!copiedLinkedinFull"
+                      [class.border-gray-200]="!copiedLinkedinFull"
+                      [class.dark:border-gray-600]="!copiedLinkedinFull"
+                      [class.hover:bg-gray-100]="!copiedLinkedinFull"
+                    >
+                      @if (copiedLinkedinFull) {
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M20 6L9 17L4 12"
+                            stroke="currentColor"
+                            stroke-width="2.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                        Copié !
+                      } @else {
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M8 5H6C4.9 5 4 5.9 4 7V19C4 20.1 4.9 21 6 21H16C17.1 21 18 20.1 18 19V17M8 5C8 6.1 8.9 7 10 7H14C15.1 7 16 6.1 16 5M8 5C8 3.9 8.9 3 10 3H14C15.1 3 16 3.9 16 5V7H18C19.1 7 20 7.9 20 9V13"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                          />
+                        </svg>
+                        Copier
+                      }
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Corps du post avec whitespace-pre-wrap -->
+                <div class="px-4 py-4 bg-white dark:bg-gray-900 relative">
+                  <pre
+                    class="text-sm text-gray-800 dark:text-gray-100 whitespace-pre-wrap leading-relaxed font-sans"
+                    >{{ offer.formatLinkedin }}</pre
+                  >
+                </div>
+              </div>
+
+              <!-- Hashtags -->
+              <div>
+                <p
+                  class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2"
+                >
+                  🏷️ Hashtags
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                  @for (tag of offer.hashtags; track tag) {
+                    <span
+                      class="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium"
+                    >
+                      {{ tag }}
+                    </span>
+                  }
+                </div>
+              </div>
+              <div
+                class="rounded-xl bg-linear-to-r from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/20 border border-red-100 dark:border-red-900/30 px-4 py-3 flex items-start gap-3"
+              >
+                <span class="text-lg shrink-0">💬</span>
+                <div>
+                  <p class="text-xs font-semibold text-[#E2001A] uppercase tracking-wide mb-1">
+                    Accroche
+                  </p>
+                  <p class="text-sm text-gray-700 dark:text-gray-200 italic leading-relaxed">
+                    {{ offer.accroche }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          }
+
+          @if (activeTab === 'details') {
+            <div class="space-y-5">
+              <!-- Missions -->
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  ✅ Missions
+                </p>
+                <ul class="space-y-1.5">
+                  @for (m of offer.missions; track m) {
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200">
+                      <span class="w-1.5 h-1.5 rounded-full bg-[#E2001A] mt-1.5 shrink-0"></span>
+                      {{ m }}
+                    </li>
+                  }
+                </ul>
+              </div>
+
+              <!-- Profil -->
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  🎯 Profil recherché
+                </p>
+                <ul class="space-y-1.5">
+                  @for (p of offer.profil; track p) {
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200">
+                      <span class="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 shrink-0"></span>
+                      {{ p }}
+                    </li>
+                  }
+                </ul>
+              </div>
+
+              <!-- Avantages -->
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  🎁 Avantages
+                </p>
+                <ul class="space-y-1.5">
+                  @for (a of offer.avantages; track a) {
+                    <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0"></span>
+                      {{ a }}
+                    </li>
+                  }
+                </ul>
+              </div>
+
+              <!-- Mots clés -->
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  🔑 Mots clés
+                </p>
+                <div class="flex flex-wrap gap-1.5">
+                  @for (k of offer.motsCles; track k) {
+                    <span
+                      class="text-xs px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                    >
+                      {{ k }}
+                    </span>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ── PLACEHOLDER quand rien de sélectionné ──────────── -->
+    @if (!showDetailPanel) {
+      <div
+        class="hidden md:flex flex-col items-center justify-center flex-1 text-center gap-3 text-gray-400"
+      >
+        <div
+          class="w-16 h-16 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center"
+        >
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M15 12H9M15 8H9M9 16H12M5 20H19C20.1 20 21 19.1 21 18V6C21 4.9 20.1 4 19 4H5C3.9 4 3 4.9 3 6V18C3 19.1 3.9 20 5 20Z"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </div>
+        <p class="text-sm">Sélectionnez une offre pour voir son contenu</p>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- ═══ MODAL SUPPRESSION ═══ -->
+@if (showDeleteModal) {
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Confirmation de suppression"
+    tabindex="0"
+    (click)="cancelDelete()"
+    (keydown.escape)="cancelDelete()"
+  >
+    <div
+      class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden"
+      tabindex="0"
+      (click)="$event.stopPropagation()"
+      (keydown)="$event.stopPropagation()"
+    >
+      <div
+        class="flex items-center gap-3 px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-700"
+      >
+        <div class="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-950 flex items-center justify-center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-red-600">
+            <path
+              d="M3 6h2l1.4 14.3c.1.9.9 1.7 1.8 1.7h8.4c.9 0 1.7-.8 1.8-1.7L19 6h2M8 6V4c0-.6.4-1 1-1h6c.6 0 1 .4 1 1v2"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </div>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-white">Supprimer l'offre</h3>
+      </div>
+      <div class="px-6 py-4">
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+          Cette action est irréversible. L'offre sera définitivement supprimée.
+        </p>
+      </div>
+      <div class="flex gap-3 px-6 pb-6">
+        <button
+          (click)="cancelDelete()"
+          class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          Annuler
+        </button>
+        <button
+          (click)="confirmDelete()"
+          class="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-sm font-medium text-white transition-colors"
+        >
+          Supprimer
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ MODAL ÉDITION COMPLÈTE ═══ -->
+@if (showFullEditModal) {
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Modifier le contenu de l'offre"
+    tabindex="0"
+    (click)="cancelFullEdit()"
+    (keydown.escape)="cancelFullEdit()"
+  >
+    <div
+      class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col overflow-hidden"
+      tabindex="0"
+      (click)="$event.stopPropagation()"
+      (keydown)="$event.stopPropagation()"
+    >
+      <!-- Header -->
+      <div
+        class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-700 shrink-0"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-950 flex items-center justify-center"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              class="text-[#E2001A]"
+            >
+              <path
+                d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+              />
+            </svg>
+          </div>
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">Modifier le contenu</h3>
+        </div>
+        <button
+          (click)="cancelFullEdit()"
+          class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M18 6L6 18M6 6l12 12"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Corps scrollable -->
+      <div class="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+        <!-- Titre -->
+        <div>
+          <label
+            for="full-edit-titre"
+            class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5"
+          >
+            Titre
+          </label>
+          <input
+            id="full-edit-titre"
+            type="text"
+            [(ngModel)]="editTitre"
+            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#E2001A] transition-all"
+          />
+        </div>
+
+        <!-- Accroche -->
+        <div>
+          <label
+            for="full-edit-accroche"
+            class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5"
+          >
+            Accroche
+          </label>
+          <textarea
+            id="full-edit-accroche"
+            [(ngModel)]="editAccroche"
+            rows="2"
+            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#E2001A] resize-none transition-all"
+          ></textarea>
+        </div>
+
+        <!-- Post LinkedIn -->
+        <div>
+          <label
+            for="full-edit-linkedin"
+            class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5"
+          >
+            📋 Post LinkedIn
+          </label>
+          <textarea
+            id="full-edit-linkedin"
+            [(ngModel)]="editFormatLinkedin"
+            rows="8"
+            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#E2001A] resize-y transition-all font-mono leading-relaxed"
+          ></textarea>
+        </div>
+
+        <!-- Missions -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span
+              class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+            >
+              ✅ Missions
+            </span>
+            <button
+              (click)="addItem(editMissions)"
+              class="flex items-center gap-1 text-xs text-[#E2001A] hover:underline"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 5V19M5 12H19"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+              Ajouter
+            </button>
+          </div>
+          <div class="space-y-2">
+            @for (m of editMissions; track trackByIndex($index); let i = $index) {
+              <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#E2001A] shrink-0"></span>
+                <input
+                  type="text"
+                  [(ngModel)]="editMissions[i]"
+                  class="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#E2001A] transition-all"
+                />
+                <button
+                  (click)="removeItem(editMissions, i)"
+                  class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M18 6L6 18M6 6l12 12"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Profil -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span
+              class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+            >
+              🎯 Profil recherché
+            </span>
+            <button
+              (click)="addItem(editProfil)"
+              class="flex items-center gap-1 text-xs text-[#E2001A] hover:underline"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 5V19M5 12H19"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+              Ajouter
+            </button>
+          </div>
+          <div class="space-y-2">
+            @for (p of editProfil; track trackByIndex($index); let i = $index) {
+              <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></span>
+                <input
+                  type="text"
+                  [(ngModel)]="editProfil[i]"
+                  class="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#E2001A] transition-all"
+                />
+                <button
+                  (click)="removeItem(editProfil, i)"
+                  class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M18 6L6 18M6 6l12 12"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Avantages -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span
+              class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+            >
+              🎁 Avantages
+            </span>
+            <button
+              (click)="addItem(editAvantages)"
+              class="flex items-center gap-1 text-xs text-[#E2001A] hover:underline"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 5V19M5 12H19"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+              Ajouter
+            </button>
+          </div>
+          <div class="space-y-2">
+            @for (a of editAvantages; track trackByIndex($index); let i = $index) {
+              <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+                <input
+                  type="text"
+                  [(ngModel)]="editAvantages[i]"
+                  class="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#E2001A] transition-all"
+                />
+                <button
+                  (click)="removeItem(editAvantages, i)"
+                  class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M18 6L6 18M6 6l12 12"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Mots clés -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span
+              class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+            >
+              🔑 Mots clés
+            </span>
+            <button
+              (click)="addItem(editMotsCles)"
+              class="flex items-center gap-1 text-xs text-[#E2001A] hover:underline"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 5V19M5 12H19"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+              Ajouter
+            </button>
+          </div>
+          <div class="space-y-2">
+            @for (k of editMotsCles; track trackByIndex($index); let i = $index) {
+              <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0"></span>
+                <input
+                  type="text"
+                  [(ngModel)]="editMotsCles[i]"
+                  class="flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#E2001A] transition-all"
+                />
+                <button
+                  (click)="removeItem(editMotsCles, i)"
+                  class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M18 6L6 18M6 6l12 12"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700 shrink-0">
+        <button
+          (click)="cancelFullEdit()"
+          class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          Annuler
+        </button>
+        <button
+          (click)="confirmFullEdit()"
+          [disabled]="!editTitre.trim() || isSaving"
+          class="flex-1 px-4 py-2.5 rounded-xl bg-[#E2001A] hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors flex items-center justify-center gap-2"
+        >
+          @if (isSaving) {
+            <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+            Enregistrement…
+          } @else {
+            Enregistrer
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}

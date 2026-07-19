@@ -1,0 +1,556 @@
+<div
+  class="fixed inset-0 z-100000 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+>
+  <button
+    class="absolute inset-0 w-full h-full cursor-default bg-transparent border-0"
+    (click)="close.emit()"
+    aria-label="Fermer"
+  ></button>
+
+  <div
+    class="relative z-10 w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col max-h-[85vh]"
+  >
+    <!-- ── Header ── -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+      <div class="flex items-center gap-3">
+        @if (step() === 2) {
+          <button
+            (click)="goBack()"
+            class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition"
+          >
+            <app-icon name="arrowLeft" />
+          </button>
+        }
+        <div>
+          <h3 class="font-semibold text-gray-800 text-sm">
+            @if (step() === 1) {
+              Choisir une fiche de poste
+            } @else {
+              Sélectionner les évaluations
+            }
+          </h3>
+          <p class="text-xs text-gray-400 mt-0.5 truncate max-w-xs">
+            {{ candidate.name }}
+            @if (step() === 2 && selectedJobPost()) {
+              — {{ selectedJobPost()!.title || selectedJobPost()!.name }}
+            }
+          </p>
+        </div>
+      </div>
+      <button
+        (click)="close.emit()"
+        class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 transition shrink-0"
+      >
+        ✕
+      </button>
+    </div>
+
+    <!-- ── Body ── -->
+    <div class="flex-1 overflow-y-auto p-4">
+      <!-- ════ STEP 1 : Fiches de poste ════ -->
+      @if (step() === 1) {
+        <!-- Filtre Tout / Invité / Non invité -->
+        <div class="flex items-center gap-1 mb-4 p-1 bg-gray-100 rounded-lg">
+          <button
+            (click)="setJobPostFilter('all')"
+            class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition"
+            [class]="
+              jobPostFilter() === 'all'
+                ? 'bg-white text-gray-800 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            "
+          >
+            Tout
+            <span
+              class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+              [class]="
+                jobPostFilter() === 'all'
+                  ? 'bg-gray-100 text-gray-600'
+                  : 'bg-gray-200 text-gray-500'
+              "
+            >
+              {{ jobPosts().length }}
+            </span>
+          </button>
+
+          <button
+            (click)="setJobPostFilter('invited')"
+            class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition"
+            [class]="
+              jobPostFilter() === 'invited'
+                ? 'bg-white text-gray-800 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            "
+          >
+            ✉️ Invité
+            <span
+              class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+              [class]="
+                jobPostFilter() === 'invited'
+                  ? 'bg-[#E2001A]/10 text-[#E2001A]'
+                  : 'bg-gray-200 text-gray-500'
+              "
+            >
+              {{ invitedCount() }}
+            </span>
+          </button>
+
+          <button
+            (click)="setJobPostFilter('not-invited')"
+            class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition"
+            [class]="
+              jobPostFilter() === 'not-invited'
+                ? 'bg-white text-gray-800 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            "
+          >
+            🕐 Non invité
+            <span
+              class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+              [class]="
+                jobPostFilter() === 'not-invited'
+                  ? 'bg-gray-100 text-gray-600'
+                  : 'bg-gray-200 text-gray-500'
+              "
+            >
+              {{ notInvitedCount() }}
+            </span>
+          </button>
+        </div>
+
+        @if (loadingJobPosts() || loadingInvitations()) {
+          <div class="flex items-center justify-center py-12 text-gray-400">
+            <app-icon name="spinner" class="w-5 h-5 animate-spin mr-2" />
+            Chargement des fiches...
+          </div>
+        } @else if (filteredJobPosts().length === 0) {
+          <p class="text-center py-12 text-sm italic text-gray-400">
+            @if (jobPostFilter() === 'invited') {
+              Aucune fiche de poste avec invitation envoyée.
+            } @else if (jobPostFilter() === 'not-invited') {
+              Toutes les fiches de poste ont déjà reçu une invitation.
+            } @else {
+              Aucune fiche de poste unifiée disponible.
+            }
+          </p>
+        } @else {
+          <div class="space-y-2">
+            @for (jp of filteredJobPosts(); track jp.id) {
+              <button
+                (click)="selectJobPost(jp)"
+                class="w-full flex items-center justify-between p-4 rounded-xl border transition text-left group"
+                [class]="
+                  isJobPostInvited(jp.id)
+                    ? 'border-[#E2001A]/30 hover:border-[#E2001A] hover:bg-red-50'
+                    : 'border-gray-200 hover:border-[#E2001A] hover:bg-red-50'
+                "
+              >
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <p
+                      class="text-sm font-semibold text-gray-700 group-hover:text-[#E2001A] transition truncate"
+                    >
+                      {{ jp.title || jp.name }}
+                    </p>
+                    @if (isJobPostInvited(jp.id)) {
+                      <span
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#E2001A]/10 text-[#E2001A] shrink-0"
+                      >
+                        ✉️ Invité
+                      </span>
+                    }
+                  </div>
+                  @if (jp.company) {
+                    <span
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 mt-1"
+                    >
+                      {{ jp.company }}
+                    </span>
+                  }
+                </div>
+                <app-icon
+                  name="arrowLeft"
+                  class="rotate-180 text-gray-300 group-hover:text-[#E2001A] transition shrink-0 ml-3"
+                />
+              </button>
+            }
+          </div>
+        }
+      }
+
+      <!-- ════ STEP 2 : Évaluations ════ -->
+      @if (step() === 2) {
+        <!-- Résultats d'envoi -->
+        @if (allSent()) {
+          <div class="space-y-2">
+            @for (r of sendResults(); track r.title) {
+              <div
+                class="flex items-center gap-3 p-3 rounded-xl border"
+                [class]="r.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'"
+              >
+                <span class="text-lg shrink-0">{{ r.success ? '✓' : '✗' }}</span>
+                <div class="min-w-0 flex-1">
+                  <p
+                    class="text-sm font-medium truncate"
+                    [class]="r.success ? 'text-green-800' : 'text-red-800'"
+                  >
+                    {{ r.title }}
+                  </p>
+                  @if (!r.success && r.error) {
+                    <p class="text-xs text-red-600 mt-0.5">{{ r.error }}</p>
+                  }
+                </div>
+              </div>
+            }
+            @if (sendResults().every(r => r.success)) {
+              <p class="text-center text-xs text-gray-400 mt-3">Fermeture automatique...</p>
+            } @else {
+              <button
+                (click)="close.emit()"
+                class="w-full mt-2 px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+              >
+                Fermer
+              </button>
+            }
+          </div>
+        }
+
+        @if (!allSent()) {
+          <!-- Récapitulatif invitations existantes pour cette fiche -->
+          @if (invitationsForSelectedJobPost().length > 0) {
+            <div
+              class="mb-4 px-3 py-2.5 rounded-xl border border-[#E2001A]/20 bg-red-50/50 flex items-start gap-2"
+            >
+              <span class="text-sm shrink-0 mt-0.5">✉️</span>
+              <p class="text-xs text-[#E2001A] leading-relaxed">
+                <span class="font-semibold"
+                  >{{ invitationsForSelectedJobPost().length }} invitation(s) déjà envoyée(s)</span
+                >
+                à ce candidat pour cette fiche de poste. Les évaluations concernées sont marquées
+                ci-dessous.
+              </p>
+            </div>
+          }
+
+          <!-- Toggle coding / quiz -->
+          <div class="flex items-center gap-1 mb-3 p-1 bg-gray-100 rounded-lg">
+            <button
+              (click)="setEvalMode('coding')"
+              class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition"
+              [class]="
+                evalMode() === 'coding'
+                  ? 'bg-white text-gray-800 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              "
+            >
+              💻 Évaluations techniques
+              <span
+                class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                [class]="
+                  evalMode() === 'coding'
+                    ? 'bg-gray-100 text-gray-600'
+                    : 'bg-gray-200 text-gray-500'
+                "
+              >
+                {{ codingCount() }}
+              </span>
+              @if (alreadySentCodingCount() > 0) {
+                <span
+                  class="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#E2001A]/10 text-[#E2001A]"
+                >
+                  {{ alreadySentCodingCount() }} ✉️
+                </span>
+              }
+            </button>
+            <button
+              (click)="setEvalMode('quiz')"
+              class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition"
+              [class]="
+                evalMode() === 'quiz'
+                  ? 'bg-white text-gray-800 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              "
+            >
+              📝 QCM
+              <span
+                class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                [class]="
+                  evalMode() === 'quiz' ? 'bg-gray-100 text-gray-600' : 'bg-gray-200 text-gray-500'
+                "
+              >
+                {{ quizCount() }}
+              </span>
+              @if (alreadySentQuizCount() > 0) {
+                <span
+                  class="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#E2001A]/10 text-[#E2001A]"
+                >
+                  {{ alreadySentQuizCount() }} ✉️
+                </span>
+              }
+            </button>
+          </div>
+
+          <!-- Filtre Toutes / Envoyées / Non envoyées -->
+          <div
+            class="flex items-center gap-1 mb-4 p-1 bg-gray-50 border border-gray-200 rounded-lg"
+          >
+            <button
+              (click)="setEvalFilter('all')"
+              class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-medium transition"
+              [class]="
+                evalFilter() === 'all'
+                  ? 'bg-white text-gray-800 shadow-sm border border-gray-200'
+                  : 'text-gray-400 hover:text-gray-600'
+              "
+            >
+              Toutes
+              <span
+                class="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                [class]="
+                  evalFilter() === 'all' ? 'bg-gray-100 text-gray-500' : 'bg-gray-200 text-gray-400'
+                "
+              >
+                {{ evalTotalCount() }}
+              </span>
+            </button>
+
+            <button
+              (click)="setEvalFilter('sent')"
+              class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-medium transition"
+              [class]="
+                evalFilter() === 'sent'
+                  ? 'bg-white text-amber-700 shadow-sm border border-amber-200'
+                  : 'text-gray-400 hover:text-gray-600'
+              "
+            >
+              ✉️ Envoyées
+              <span
+                class="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                [class]="
+                  evalFilter() === 'sent'
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-gray-200 text-gray-400'
+                "
+              >
+                {{ evalSentCount() }}
+              </span>
+            </button>
+
+            <button
+              (click)="setEvalFilter('not-sent')"
+              class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-medium transition"
+              [class]="
+                evalFilter() === 'not-sent'
+                  ? 'bg-white text-gray-800 shadow-sm border border-gray-200'
+                  : 'text-gray-400 hover:text-gray-600'
+              "
+            >
+              🕐 Non envoyées
+              <span
+                class="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                [class]="
+                  evalFilter() === 'not-sent'
+                    ? 'bg-gray-100 text-gray-500'
+                    : 'bg-gray-200 text-gray-400'
+                "
+              >
+                {{ evalNotSentCount() }}
+              </span>
+            </button>
+          </div>
+
+          <!-- Liste évaluations filtrées -->
+          @if (loadingEvaluations()) {
+            <div class="flex items-center justify-center py-8 text-gray-400">
+              <app-icon name="spinner" class="w-5 h-5 animate-spin mr-2" />
+              Chargement...
+            </div>
+          } @else if (filteredEvaluations().length === 0) {
+            <div class="flex flex-col items-center justify-center py-10 text-center px-4">
+              <p class="text-3xl mb-3">{{ evalMode() === 'coding' ? '💻' : '📝' }}</p>
+              <p class="text-sm font-medium text-gray-700 mb-1">
+                Aucune {{ evalMode() === 'coding' ? 'évaluation technique' : 'QCM' }} disponible
+              </p>
+              <p class="text-xs text-gray-400 mb-5">
+                @if (evalMode() === 'coding') {
+                  Aucune évaluation technique n'a encore été créée pour cette fiche de poste.
+                } @else {
+                  Aucun QCM n'a encore été créé pour cette fiche de poste.
+                }
+              </p>
+              <button
+                (click)="evalMode() === 'coding' ? goToCreateEvaluation() : goToCreateQuiz()"
+                class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-[#E2001A] text-white hover:bg-red-700 transition shadow-sm"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-4 h-4"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+                @if (evalMode() === 'coding') {
+                  Créer une évaluation technique
+                } @else {
+                  Créer un QCM
+                }
+              </button>
+            </div>
+          } @else {
+            <!-- Sélection globale -->
+            @if (evalFilter() !== 'sent') {
+              <div class="flex items-center justify-between mb-2 px-1">
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    [checked]="isAllSelected()"
+                    [indeterminate]="isIndeterminate()"
+                    (change)="toggleSelectAll()"
+                    class="w-4 h-4 rounded border-gray-300 accent-[#E2001A] cursor-pointer"
+                  />
+                  <span class="text-xs text-gray-500 font-medium">Tout sélectionner</span>
+                </label>
+                @if (selectedCount() > 0) {
+                  <span class="text-xs font-semibold text-[#E2001A]">
+                    {{ selectedCount() }} sélectionnée(s)
+                  </span>
+                }
+              </div>
+            }
+
+            <div class="space-y-2">
+              @for (ev of filteredEvaluations(); track ev.id) {
+                <div
+                  (click)="evalFilter() !== 'sent' && toggleSelection(ev.id)"
+                  role="button"
+                  tabindex="0"
+                  class="flex items-center gap-3 p-3.5 rounded-xl border transition"
+                  [class]="
+                    evalFilter() !== 'sent' && isSelected(ev.id)
+                      ? 'border-[#E2001A] bg-red-50 cursor-pointer'
+                      : evalFilter() === 'sent'
+                        ? 'border-gray-200 cursor-default'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 cursor-pointer'
+                  "
+                >
+                  @if (evalFilter() !== 'sent') {
+                    <input
+                      type="checkbox"
+                      [checked]="isSelected(ev.id)"
+                      (click)="$event.stopPropagation(); toggleSelection(ev.id)"
+                      class="w-4 h-4 rounded border-gray-300 accent-[#E2001A] cursor-pointer shrink-0"
+                    />
+                  }
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <p class="text-sm font-medium text-gray-700 truncate">{{ ev.title }}</p>
+                      @if (isEvaluationAlreadySent(ev.id)) {
+                        <button
+                          (click)="$event.stopPropagation(); openHistoryForEvaluation(ev)"
+                          class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 hover:bg-amber-200 transition shrink-0"
+                          title="Voir l'historique des invitations"
+                        >
+                          ✉️ Déjà envoyé · Voir →
+                        </button>
+                      }
+                    </div>
+                    <p class="text-xs text-gray-400">v{{ ev.version }}</p>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Date d'échéance -->
+          @if (selectedCount() > 0) {
+            <div class="mt-4 pt-4 border-t border-gray-100">
+              <label for="eval-due-date" class="block text-xs font-semibold text-gray-600 mb-1.5">
+                Date d'échéance <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="eval-due-date"
+                type="date"
+                [min]="minDate()"
+                [value]="dueDate()"
+                (input)="dueDate.set($any($event.target).value)"
+                class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E2001A]/30 focus:border-[#E2001A] transition"
+              />
+            </div>
+          }
+
+          @if (error()) {
+            <p
+              class="mt-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"
+            >
+              {{ error() }}
+            </p>
+          }
+        }
+      }
+    </div>
+
+    <!-- ── Footer ── -->
+    @if (step() === 2 && !allSent() && evalFilter() !== 'sent') {
+      <div
+        class="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100 shrink-0"
+      >
+        <span class="text-xs text-gray-400">
+          @if (selectedCount() === 0) {
+            Sélectionnez des évaluations
+          } @else {
+            {{ selectedCount() }} évaluation(s) · 1 candidat
+          }
+        </span>
+        <div class="flex gap-2">
+          <button
+            (click)="close.emit()"
+            class="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+          >
+            Annuler
+          </button>
+          <button
+            (click)="send()"
+            [disabled]="selectedCount() === 0 || !dueDate() || sending()"
+            class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium bg-[#E2001A] text-white hover:bg-red-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            @if (sending()) {
+              <span
+                class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+              ></span>
+              Envoi en cours…
+            } @else {
+              <app-icon name="send" />
+              Envoyer ({{ selectedCount() }})
+            }
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- History modal -->
+  @if (showHistoryModal() && historyEvaluation()) {
+    <app-invitation-history-modal
+      [resumeFileId]="candidate.driveId"
+      [candidateName]="candidate.name"
+      [evaluations]="historyEvaluations()"
+      [evaluation]="historyEvaluation()"
+      [filterByEvaluationId]="historyFilterByEvaluationId()"
+      [canDelete]="false"
+      [canViewGitRepo]="true"
+      [codeEvaluations]="codeEvaluations()"
+      [quizResults]="quizResults()"
+      [evaluatingInvitationId]="evaluatingInvitationId()"
+      (closeModal)="closeHistoryModal()"
+      (invitationDeleted)="loadExistingInvitations()"
+      (evaluate)="onEvaluate($event)"
+      (openCodeEval)="openCodeEvalModal($event)"
+      (openQuizResult)="openQuizResultModal($event)"
+    />
+  }
+</div>

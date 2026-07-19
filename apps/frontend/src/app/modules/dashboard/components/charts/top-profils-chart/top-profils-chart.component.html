@@ -1,0 +1,36 @@
+<div
+  class="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 shadow-sm"
+>
+  <h2 class="text-xs font-bold text-gray-600 dark:text-gray-300 mb-3 flex items-center gap-2">
+    <span class="w-1 h-3.5 bg-emerald-500 rounded-full"></span>
+    Top profils recherchés
+  </h2>
+  @if (bars().length > 0) {
+    <div class="space-y-2">
+      @for (bar of bars(); track bar.label) {
+        <div class="flex items-center gap-2">
+          <span
+            class="text-[11px] text-gray-500 dark:text-gray-400 w-40 shrink-0 text-right leading-tight line-clamp-2 wrap-break-word"
+            [title]="bar.label"
+          >
+            {{ bar.label }}
+          </span>
+          <div class="flex-1 bg-gray-100 dark:bg-gray-800 h-5 overflow-hidden rounded">
+            <div
+              class="h-full transition-all duration-700 ease-out"
+              [style.width.%]="bar.pct"
+              style="background: #1d4ed8"
+            ></div>
+          </div>
+          <span class="text-[11px] font-bold text-emerald-600 w-5 shrink-0 text-right">{{
+            bar.count
+          }}</span>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="h-32 flex items-center justify-center text-gray-300 italic text-sm">
+      Aucune donnée profil
+    </div>
+  }
+</div>

@@ -1,0 +1,190 @@
+<div class="p-6 space-y-6 w-full max-w-7xl mx-auto">
+  <header class="border-b border-gray-100 dark:border-gray-800 pb-4">
+    <h1 class="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+      @if (isAdmin()) {
+        Dashboard Administrateur
+      } @else if (isRecruiter()) {
+        Dashboard Recruteur
+      } @else if (isReferent()) {
+        Dashboard Référent technique
+      } @else {
+        Dashboard
+      }
+    </h1>
+  </header>
+
+  @if (facade.loading()) {
+    <div class="flex flex-col items-center justify-center py-24 space-y-4">
+      <div
+        class="w-8 h-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin"
+      ></div>
+      <p class="text-gray-400 text-sm animate-pulse">Récupération des statistiques...</p>
+    </div>
+  }
+
+  @if (facade.error()) {
+    <div
+      class="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-r-xl p-4 flex items-center gap-3"
+    >
+      <span class="text-red-500">⚠️</span>
+      <p class="text-sm text-red-700 dark:text-red-400 font-semibold">{{ facade.error() }}</p>
+    </div>
+  }
+
+  @if (!facade.loading() && !facade.error()) {
+    <!-- ══════════════════════════════════════════════════════ ADMIN ══ -->
+    @if (isAdmin()) {
+      <!-- KPIs Équipe -->
+      <section class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          Équipe & Candidats
+        </h2>
+        <div class="grid grid-cols-2 gap-4">
+          <app-users-kpi-card class="h-full" [stats]="facade.userStats()" />
+          <app-candidates-kpi-card class="h-full" [stats]="facade.resumeStats()" />
+        </div>
+      </section>
+
+      <!-- KPIs Recrutement & Évaluations -->
+      <section class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          Fiches de poste & Évaluations
+        </h2>
+        <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <app-job-posts-kpi-card class="h-full" [stats]="facade.jobPostStats()" />
+          <app-evaluations-kpi-card class="h-full" [stats]="facade.evaluationStats()" />
+          <app-invitations-kpi-card class="h-full" [stats]="facade.referentInvitationStats()" />
+        </div>
+      </section>
+
+      <!-- Charts Postes & Candidats -->
+      <section class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          Analyse des postes & candidats
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+          <div class="lg:col-span-4 flex flex-col gap-4 h-full">
+            <app-roles-donut-chart class="flex-1 min-h-0" [stats]="facade.userStats()" />
+          </div>
+          <div class="lg:col-span-8 flex flex-col gap-4">
+            <app-top-clients-chart class="flex-1" [stats]="facade.jobPostStats()" />
+            <app-top-profils-chart class="flex-1" [stats]="facade.jobPostStats()" />
+          </div>
+        </div>
+      </section>
+
+      <section class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          Évaluations en attente de traitement
+        </h2>
+        <app-pending-evaluations-list
+          [evaluations]="facade.pendingEvaluations()"
+          (navigate)="navigateToEvaluations($event)"
+        />
+      </section>
+      <section class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          Mon activité & compétences
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 items-stretch">
+          <div class="md:col-span-1 lg:col-span-7 flex flex-col gap-4">
+            <app-recent-conversations-list
+              class="flex-1 min-h-0"
+              [conversations]="facade.recentConversations()"
+              (navigate)="navigateToConversation($event)"
+            />
+            <app-conversations-kpi-card [stats]="facade.consultantStats()" />
+          </div>
+          <div class="md:col-span-1 lg:col-span-5 flex flex-col">
+            <app-domains-polar-chart
+              class="flex-1 min-h-0"
+              [domainStats]="facade.consultantDomainStats()"
+            />
+          </div>
+        </div>
+      </section>
+    }
+    <!-- ═════════════════════════════════════════════════ RECRUTEUR ══ -->
+    @if (isRecruiter()) {
+      <section class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          Fiches de poste & Candidats
+        </h2>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <app-job-posts-kpi-card class="h-full" [stats]="facade.jobPostStats()" />
+          <app-candidates-kpi-card class="h-full" [stats]="facade.resumeStats()" />
+          <app-evaluations-kpi-card class="h-full" [stats]="facade.evaluationStats()" />
+          <app-invitations-kpi-card class="h-full" [stats]="facade.referentInvitationStats()" />
+        </div>
+      </section>
+
+      <section class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          Analyse des postes & candidats
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <app-top-clients-chart [stats]="facade.jobPostStats()" />
+          <app-top-profils-chart [stats]="facade.jobPostStats()" />
+        </div>
+      </section>
+
+      <section class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          Évaluations en attente de traitement
+        </h2>
+        <app-pending-evaluations-list
+          [evaluations]="facade.pendingEvaluations()"
+          (navigate)="navigateToEvaluations($event)"
+        />
+      </section>
+    }
+
+    <!-- ══════════════════════════════════════════════════ RÉFÉRENT ══ -->
+    @if (isReferent()) {
+      <section class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          Évaluations & invitations
+        </h2>
+        <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <app-job-posts-kpi-card class="h-full" [stats]="facade.jobPostStats()" />
+          <app-evaluations-kpi-card class="h-full" [stats]="facade.evaluationStats()" />
+          <app-invitations-kpi-card class="h-full" [stats]="facade.referentInvitationStats()" />
+        </div>
+      </section>
+
+      <section class="space-y-2">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          Évaluations en attente de traitement
+        </h2>
+        <app-pending-evaluations-list
+          [evaluations]="facade.pendingEvaluations()"
+          (navigate)="navigateToEvaluations($event)"
+        />
+      </section>
+    }
+  }
+  <!-- ══════════════════════════════════════════════════ CONSULTANT ══ -->
+  @if (isConsultant()) {
+    <section class="space-y-2">
+      <h2 class="text-xs font-semibold uppercase tracking-widest text-gray-400">
+        Mon activité & compétences
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 items-stretch">
+        <div class="md:col-span-1 lg:col-span-7 flex flex-col gap-4">
+          <app-recent-conversations-list
+            class="flex-1 min-h-0"
+            [conversations]="facade.recentConversations()"
+            (navigate)="navigateToConversation($event)"
+          />
+          <app-conversations-kpi-card [stats]="facade.consultantStats()" />
+        </div>
+        <div class="md:col-span-1 lg:col-span-5 flex flex-col">
+          <app-domains-polar-chart
+            class="flex-1 min-h-0"
+            [domainStats]="facade.consultantDomainStats()"
+          />
+        </div>
+      </div>
+    </section>
+  }
+</div>

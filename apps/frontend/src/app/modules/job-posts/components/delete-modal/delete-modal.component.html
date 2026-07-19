@@ -1,0 +1,67 @@
+<div
+  class="fixed inset-0 z-100000 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-sm"
+>
+  <div
+    class="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6"
+  >
+    <!-- HEADER -->
+    <div class="flex items-start gap-3 sm:gap-4 mb-4">
+      <div
+        class="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-red-100 text-red-600 text-xl sm:text-2xl shrink-0"
+      >
+        ⚠️
+      </div>
+
+      <div class="min-w-0">
+        <h3 class="text-base sm:text-lg font-semibold text-gray-800 dark:text-white leading-snug">
+          {{
+            file().status === 'unified'
+              ? 'Supprimer la version unifiée ?'
+              : 'Confirmer la suppression'
+          }}
+        </h3>
+
+        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+          {{
+            file().status === 'unified'
+              ? 'La fiche unifiée sera supprimée et la fiche reviendra au statut brute.'
+              : 'Cette fiche sera supprimée définitivement.'
+          }}
+        </p>
+      </div>
+    </div>
+
+    <!-- FILE BOX -->
+    <div
+      class="mb-5 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700"
+    >
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="text-xl sm:text-2xl shrink-0">
+          {{ getFileIcon(file().type) }}
+        </span>
+
+        <p class="font-medium text-gray-700 dark:text-gray-200 truncate text-sm sm:text-base">
+          {{ file().name }}
+        </p>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
+      <button
+        (click)="cancel.emit()"
+        class="w-full sm:w-auto px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition text-sm"
+      >
+        Annuler
+      </button>
+
+      <button
+        (click)="confirm.emit()"
+        class="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition shadow-sm flex items-center justify-center gap-2 text-sm"
+      >
+        <app-icon name="trash" />
+        {{ file().status === 'unified' ? 'Supprimer' : 'Supprimer' }}
+      </button>
+    </div>
+  </div>
+</div>

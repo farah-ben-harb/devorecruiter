@@ -1,0 +1,35 @@
+import * as Joi from 'joi';
+
+export const envValidationSchema = Joi.object({
+  NODE_ENV: Joi.string()
+    .valid('development', 'test', 'production')
+    .default('development'),
+  PORT: Joi.number().port().default(3000),
+
+  CORS_ORIGIN: Joi.string().uri().required(),
+  FRONTEND_URL: Joi.string().uri().required(),
+  AUTH_CALLBACK_INCLUDE_ACCESS_TOKEN_QUERY: Joi.boolean().default(true),
+  AUTH_COOKIE_SAMESITE: Joi.string()
+    .valid('lax', 'strict', 'none')
+    .default('lax'),
+  AUTH_COOKIE_SECURE: Joi.boolean().optional(),
+
+  DATABASE_HOST: Joi.string().required(),
+  DATABASE_PORT: Joi.number().port().required(),
+  DATABASE_USER: Joi.string().required(),
+  DATABASE_PASSWORD: Joi.string().allow('').required(),
+  DATABASE_NAME: Joi.string().required(),
+  DATABASE_SYNCHRONIZE: Joi.boolean().default(false),
+
+  JWT_SECRET: Joi.string().min(16).required(),
+  JWT_REFRESH_SECRET: Joi.string().min(16).required(),
+
+  GOOGLE_CLIENT_ID: Joi.string().required(),
+  GOOGLE_CLIENT_SECRET: Joi.string().required(),
+  GOOGLE_CALLBACK_URL: Joi.string().uri().required(),
+  APP_FRONTEND_URL: Joi.string().uri().optional(),
+
+  N8N_WEBHOOK_URL: Joi.string().uri().required(),
+  FASTAPI_BASE_URL: Joi.string().uri().optional(),
+  RAG_URL: Joi.string().uri().optional(),
+}).or('FASTAPI_BASE_URL', 'RAG_URL');

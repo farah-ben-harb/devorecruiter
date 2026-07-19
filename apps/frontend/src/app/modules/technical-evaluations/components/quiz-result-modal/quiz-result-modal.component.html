@@ -1,0 +1,151 @@
+<div
+  class="fixed inset-0 z-100001 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+>
+  <div
+    class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col max-h-[90vh] overflow-y-auto"
+  >
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div class="flex items-center gap-3">
+        <div
+          class="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-100 text-blue-600 text-lg"
+        >
+          📝
+        </div>
+        <div>
+          <h4 class="font-semibold text-gray-800 text-sm">Résultat du quiz</h4>
+          <p class="text-xs text-gray-400">Analyse IA des réponses</p>
+        </div>
+      </div>
+      <button
+        (click)="close.emit()"
+        class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400"
+      >
+        ✕
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="px-6 py-5 space-y-4">
+      <!-- Score global -->
+      <div
+        class="flex items-center justify-center gap-6 p-4 rounded-xl bg-gray-50 border border-gray-100"
+      >
+        <div class="flex flex-col items-center">
+          <span
+            class="text-3xl font-bold"
+            [class]="
+              quizResult().scorePercent >= 70
+                ? 'text-green-600'
+                : quizResult().scorePercent >= 40
+                  ? 'text-amber-600'
+                  : 'text-red-600'
+            "
+          >
+            {{ quizResult().scorePercent }}%
+          </span>
+          <span class="text-xs text-gray-400 mt-0.5">Score global</span>
+        </div>
+        <div class="w-px h-10 bg-gray-200"></div>
+        <div class="flex flex-col items-center">
+          <span class="text-xl font-bold text-gray-700">
+            {{ quizResult().correctAnswers }}/{{ quizResult().totalQuestions }}
+          </span>
+          <span class="text-xs text-gray-400 mt-0.5">Bonnes réponses</span>
+        </div>
+        @if (quizResult().durationSeconds; as duration) {
+          <div class="w-px h-10 bg-gray-200"></div>
+          <div class="flex flex-col items-center">
+            <span class="text-xl font-bold text-gray-700">
+              {{ duration / 60 | number: '1.0-0' }} min
+            </span>
+            <span class="text-xs text-gray-400 mt-0.5">Durée</span>
+          </div>
+        }
+      </div>
+
+      @if (parseAiFeedback(quizResult().aiFeedbackJson); as ai) {
+        <div class="flex items-center justify-center">
+          <span
+            class="px-4 py-1.5 rounded-full text-sm font-semibold"
+            [class]="
+              ai.recommendation === 'hire'
+                ? 'bg-green-100 text-green-700'
+                : ai.recommendation === 'maybe'
+                  ? 'bg-amber-100 text-amber-700'
+                  : 'bg-red-100 text-red-700'
+            "
+          >
+            {{
+              ai.recommendation === 'hire'
+                ? '✓ Recommandé'
+                : ai.recommendation === 'maybe'
+                  ? '~ À discuter'
+                  : '✗ Non recommandé'
+            }}
+          </span>
+        </div>
+
+        <!-- Analyse par domaine -->
+        @if (ai.domainAnalysis.length > 0) {
+          <div>
+            <p class="text-xs font-semibold text-gray-500 mb-2">Analyse par domaine</p>
+            <div class="space-y-2">
+              @for (d of ai.domainAnalysis; track d.domain) {
+                <div
+                  class="flex items-center justify-between p-2 rounded-lg border border-gray-100 bg-gray-50"
+                >
+                  <span class="text-xs font-medium text-gray-700">{{ d.domain }}</span>
+                  <span
+                    class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                    [class]="
+                      d.mastery === 'strong'
+                        ? 'bg-green-100 text-green-700'
+                        : d.mastery === 'average'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-red-100 text-red-700'
+                    "
+                  >
+                    {{
+                      d.mastery === 'strong'
+                        ? 'Maîtrisé'
+                        : d.mastery === 'average'
+                          ? 'Moyen'
+                          : 'Faible'
+                    }}
+                  </span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Questions à poser en entretien -->
+        @if (ai.interviewRecommendations.length > 0) {
+          <div class="p-3 rounded-xl bg-indigo-50 border border-indigo-100">
+            <p class="text-xs font-semibold text-indigo-700 mb-2">
+              💬 Questions à poser en entretien
+            </p>
+            @for (q of ai.interviewRecommendations; track q) {
+              <p
+                class="text-xs text-indigo-800 leading-relaxed before:content-['→'] before:mr-1 mb-1"
+              >
+                {{ q }}
+              </p>
+            }
+          </div>
+        }
+      }
+    </div>
+
+    <!-- Footer -->
+    <div class="flex justify-end px-6 py-4 border-t border-gray-100">
+      <button
+        (click)="close.emit()"
+        class="px-4 py-2 rounded-lg text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+      >
+        Fermer
+      </button>
+    </div>
+  </div>
+</div>

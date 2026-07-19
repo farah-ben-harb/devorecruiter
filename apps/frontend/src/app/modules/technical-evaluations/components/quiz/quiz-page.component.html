@@ -1,0 +1,229 @@
+<div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+  <!-- Loading -->
+  @if (step() === 'loading') {
+    <div class="flex flex-col items-center gap-4">
+      <div
+        class="animate-spin rounded-full h-12 w-12 border-4 border-red-200 border-t-[#E2001A]"
+      ></div>
+      <p class="text-gray-500 text-sm">Chargement du quiz...</p>
+    </div>
+  }
+
+  <!-- Error -->
+  @if (step() === 'error') {
+    <div
+      class="bg-white rounded-2xl shadow-lg border border-red-200 p-8 max-w-md w-full text-center"
+    >
+      <div class="text-5xl mb-4">❌</div>
+      <h2 class="text-lg font-semibold text-gray-800 mb-2">Accès impossible</h2>
+      <p class="text-sm text-gray-500">{{ errorMessage() }}</p>
+    </div>
+  }
+
+  <!-- Intro -->
+  @if (step() === 'intro' && quiz(); as q) {
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 max-w-lg w-full">
+      <div class="text-center mb-6">
+        <div
+          class="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4"
+        >
+          📝
+        </div>
+        <h1 class="text-xl font-bold text-gray-800">{{ q.title }}</h1>
+        <p class="text-sm text-gray-500 mt-1">
+          Bonjour {{ q.candidateFirstName }} {{ q.candidateName }}
+        </p>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="flex flex-col items-center p-3 rounded-xl bg-gray-50 border border-gray-100">
+          <span class="text-xl font-bold text-gray-800">{{ q.questions.length }}</span>
+          <span class="text-xs text-gray-400 mt-0.5">Questions</span>
+        </div>
+        <div class="flex flex-col items-center p-3 rounded-xl bg-gray-50 border border-gray-100">
+          <span class="text-xl font-bold text-gray-800">{{ q.durationMinutes }}</span>
+          <span class="text-xs text-gray-400 mt-0.5">Minutes</span>
+        </div>
+        <div class="flex flex-col items-center p-3 rounded-xl bg-gray-50 border border-gray-100">
+          <span class="text-xl font-bold text-gray-800">1</span>
+          <span class="text-xs text-gray-400 mt-0.5">Tentative</span>
+        </div>
+      </div>
+
+      <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700 mb-6">
+        ⚠️ Ce quiz ne peut être soumis qu'une seule fois. Assurez-vous d'être dans un endroit calme
+        avant de commencer.
+      </div>
+
+      <button
+        (click)="startQuiz()"
+        class="w-full py-3 rounded-xl bg-[#E2001A] text-white font-semibold text-sm hover:bg-red-700 transition"
+      >
+        Commencer le quiz →
+      </button>
+    </div>
+  }
+
+  <!-- Questions -->
+  @if (step() === 'questions' && currentQuestion(); as q) {
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-200 w-full max-w-2xl">
+      <!-- Header progression -->
+      <div class="px-6 py-4 border-b border-gray-100">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs text-gray-400"
+            >Question {{ currentIndex() + 1 }} / {{ quiz()!.questions.length }}</span
+          >
+          <span class="text-xs font-medium text-gray-600">{{ progress() }}%</span>
+        </div>
+        <div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            class="h-full bg-[#E2001A] rounded-full transition-all duration-300"
+            [style.width.%]="progress()"
+          ></div>
+        </div>
+      </div>
+
+      <!-- Question -->
+      <div class="px-6 py-5">
+        <div class="flex items-center gap-2 mb-4">
+          <span
+            class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+            [class]="getDifficultyClass(q.difficulty)"
+          >
+            {{ getDifficultyLabel(q.difficulty) }}
+          </span>
+          <span
+            class="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+          >
+            {{ q.domain }}
+          </span>
+        </div>
+
+        <p class="text-base font-semibold text-gray-800 mb-5 leading-relaxed">{{ q.question }}</p>
+
+        <div class="space-y-3">
+          @for (option of q.options; track option; let i = $index) {
+            <button
+              (click)="selectAnswer(q.id, option)"
+              class="w-full flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all"
+              [class]="
+                isSelected(q.id, option)
+                  ? 'border-[#E2001A] bg-red-50'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
+              "
+            >
+              <span
+                class="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition"
+                [class]="
+                  isSelected(q.id, option)
+                    ? 'border-[#E2001A] bg-[#E2001A] text-white'
+                    : 'border-gray-300 bg-gray-50 text-gray-500'
+                "
+              >
+                {{ getOptionLetter(i) }}
+              </span>
+              <span class="text-sm text-gray-700">{{ option }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+        <button
+          (click)="prev()"
+          [disabled]="currentIndex() === 0"
+          class="px-4 py-2 rounded-lg text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-30"
+        >
+          ← Précédent
+        </button>
+        <button
+          (click)="next()"
+          [disabled]="!isAnswered()"
+          class="px-5 py-2 rounded-lg text-sm font-medium bg-[#E2001A] text-white hover:bg-red-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {{ isLast() ? 'Soumettre ✓' : 'Suivant →' }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Submitting -->
+  @if (step() === 'submitting') {
+    <div class="flex flex-col items-center gap-4 text-center">
+      <div
+        class="animate-spin rounded-full h-12 w-12 border-4 border-red-200 border-t-[#E2001A]"
+      ></div>
+      <p class="text-gray-600 font-medium">Analyse de vos réponses en cours...</p>
+      <p class="text-xs text-gray-400">L'IA évalue votre performance, merci de patienter.</p>
+    </div>
+  }
+
+  <!-- Result -->
+  @if (step() === 'result' && result(); as r) {
+    <div
+      class="bg-white rounded-2xl shadow-lg border border-gray-200 w-full max-w-lg p-6 space-y-5"
+    >
+      <div class="text-center">
+        <div class="text-5xl mb-3">
+          {{ r.scorePercent >= 70 ? '🎉' : r.scorePercent >= 40 ? '💪' : '📚' }}
+        </div>
+        <h2 class="text-xl font-bold text-gray-800">Quiz terminé !</h2>
+        <p class="text-sm text-gray-500 mt-1">Voici vos résultats</p>
+      </div>
+
+      <!-- Score -->
+      <div
+        class="flex items-center justify-center gap-6 p-4 rounded-xl bg-gray-50 border border-gray-100"
+      >
+        <div class="flex flex-col items-center">
+          <span
+            class="text-4xl font-bold"
+            [class]="
+              r.scorePercent >= 70
+                ? 'text-green-600'
+                : r.scorePercent >= 40
+                  ? 'text-amber-600'
+                  : 'text-red-600'
+            "
+          >
+            {{ r.scorePercent }}%
+          </span>
+          <span class="text-xs text-gray-400">Score</span>
+        </div>
+        <div class="w-px h-10 bg-gray-200"></div>
+        <div class="flex flex-col items-center">
+          <span class="text-2xl font-bold text-gray-700"
+            >{{ r.correctAnswers }}/{{ r.totalQuestions }}</span
+          >
+          <span class="text-xs text-gray-400">Bonnes réponses</span>
+        </div>
+      </div>
+
+      <!-- Recommandation IA -->
+      <div class="flex justify-center">
+        <span
+          class="px-4 py-1.5 rounded-full text-sm font-semibold"
+          [class]="
+            r.aiFeedback.recommendation === 'hire'
+              ? 'bg-green-100 text-green-700'
+              : r.aiFeedback.recommendation === 'maybe'
+                ? 'bg-amber-100 text-amber-700'
+                : 'bg-red-100 text-red-700'
+          "
+        >
+          {{
+            r.aiFeedback.recommendation === 'hire'
+              ? '✓ Excellent profil'
+              : r.aiFeedback.recommendation === 'maybe'
+                ? '~ Profil à discuter'
+                : '↑ Des progrès à faire'
+          }}
+        </span>
+      </div>
+      <p class="text-center text-xs text-gray-400">
+        Vos résultats ont été transmis à l'équipe RH. Bonne chance ! 🍀
+      </p>
+    </div>
+  }
+</div>

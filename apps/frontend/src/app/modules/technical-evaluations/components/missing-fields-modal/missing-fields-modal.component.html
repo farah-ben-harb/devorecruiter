@@ -1,0 +1,158 @@
+<div
+  class="fixed inset-0 z-100000 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+>
+  <div
+    class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100"
+  >
+    <!-- ── Header ── -->
+    <div class="relative bg-white px-6 pt-8 pb-6 border-b border-gray-100">
+      <div
+        class="absolute top-0 right-0 w-32 h-32 bg-gray-100/50 rounded-full -translate-y-1/2 translate-x-1/2"
+      ></div>
+      <div
+        class="absolute bottom-0 left-0 w-20 h-20 bg-gray-100/50 rounded-full translate-y-1/2 -translate-x-1/2"
+      ></div>
+
+      <div class="relative flex items-start justify-between">
+        <div class="flex items-center gap-4">
+          <div
+            class="w-12 h-12 flex items-center justify-center rounded-2xl bg-gray-100 border border-gray-200 text-xl shadow-inner"
+          >
+            ✏️
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-gray-800 tracking-tight">Compléter le profil</h2>
+            <p class="text-gray-500 text-xs mt-0.5 font-medium">{{ target.name }}</p>
+          </div>
+        </div>
+        <button
+          (click)="close()"
+          class="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 transition"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div
+        class="relative mt-5 flex items-center gap-2 bg-amber-50 rounded-xl px-4 py-2.5 border border-amber-200"
+      >
+        <span class="text-amber-500 text-sm">⚠</span>
+        <p class="text-amber-700 text-xs leading-relaxed">
+          Ces informations sont requises pour envoyer l'invitation d'évaluation.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Body ── -->
+    <div class="px-6 py-6 space-y-5">
+      <!-- GitHub Username -->
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between">
+          <label for="github-field" class="text-xs font-bold text-gray-700 uppercase tracking-wide">
+            GitHub Username
+          </label>
+          @if (!target.githubUsername) {
+            <span
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-[#E2001A] border border-red-200"
+            >
+              ● Manquant
+            </span>
+          } @else {
+            <span
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200"
+            >
+              ✓ Renseigné
+            </span>
+          }
+        </div>
+        <div class="relative group">
+          <div
+            class="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-md bg-gray-100 group-focus-within:bg-red-50 transition-colors text-gray-400 text-sm font-medium"
+          >
+            @
+          </div>
+          <input
+            id="github-field"
+            type="text"
+            [(ngModel)]="githubUsernameInput"
+            placeholder="jean-dupont"
+            class="w-full pl-12 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E2001A]/20 focus:border-[#E2001A] focus:bg-white transition-all"
+          />
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="border-t border-dashed border-gray-200"></div>
+
+      <!-- Email -->
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between">
+          <label for="email-field" class="text-xs font-bold text-gray-700 uppercase tracking-wide">
+            Adresse Email
+          </label>
+          @if (!target.email) {
+            <span
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-[#E2001A] border border-red-200"
+            >
+              ● Manquant
+            </span>
+          } @else {
+            <span
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200"
+            >
+              ✓ Renseigné
+            </span>
+          }
+        </div>
+        <div class="relative group">
+          <div
+            class="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-md bg-gray-100 group-focus-within:bg-red-50 transition-colors"
+          >
+            <!-- SVG icon... -->
+          </div>
+          <input
+            id="email-field"
+            type="email"
+            [(ngModel)]="emailInput"
+            placeholder="jean.dupont@email.com"
+            class="w-full pl-12 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-gray-50 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E2001A]/20 focus:border-[#E2001A] focus:bg-white transition-all"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Footer ── -->
+    <div class="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-100">
+      <button
+        (click)="close()"
+        class="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-all shadow-sm"
+      >
+        Annuler
+      </button>
+      <button
+        (click)="save()"
+        [disabled]="saving()"
+        class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#E2001A] hover:bg-red-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+      >
+        @if (saving()) {
+          <span
+            class="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"
+          ></span>
+          Enregistrement...
+        } @else {
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2.5"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          Enregistrer
+        }
+      </button>
+    </div>
+  </div>
+</div>

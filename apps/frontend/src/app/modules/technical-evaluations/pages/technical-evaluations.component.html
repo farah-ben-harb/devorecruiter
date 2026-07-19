@@ -1,0 +1,151 @@
+<div class="p-3 sm:p-6 relative">
+  <!-- Header -->
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+    <div class="flex items-center gap-3">
+      <button
+        (click)="goBack()"
+        class="shrink-0 p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+      >
+        <app-icon name="arrowLeft"></app-icon>
+      </button>
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">
+          @if (evaluationMode() === 'quiz') {
+            Liste des QCM
+          } @else {
+            Évaluations techniques
+          }
+        </h1>
+        @if (title() || company()) {
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {{ title() }}{{ title() && company() ? ' — ' : '' }}{{ company() }}
+          </p>
+        }
+      </div>
+    </div>
+
+    @if (canGenerate) {
+      <button
+        (click)="generateEvaluation()"
+        [disabled]="generating()"
+        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#E2001A] hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        @if (generating()) {
+          <app-icon name="spinner" class="w-4 h-4 animate-spin shrink-0"></app-icon>
+          Génération en cours...
+        } @else {
+          <app-icon name="plus" class="w-4 h-4 shrink-0"></app-icon>
+          @if (evaluationMode() === 'quiz') {
+            Générer un QCM
+          } @else {
+            Générer une évaluation technique
+          }
+        }
+      </button>
+    }
+  </div>
+
+  <!-- Table des évaluations -->
+  <app-evaluations-table
+    [evaluations]="evaluations()"
+    [loadingEvaluations]="loadingEvaluations()"
+    [approving]="approving()"
+    [openMenuId]="openMenuId()"
+    (toggleMenu)="onToggleMenu($event)"
+  />
+
+  <!-- Menu contextuel flottant -->
+  @if (openMenuId() && selectedMenuEvaluation()) {
+    <app-evaluation-actions-menu
+      [evaluation]="selectedMenuEvaluation()!"
+      [menuPosition]="menuPosition"
+      [approving]="approving()"
+      [canEdit]="canEdit"
+      [canApprove]="canApprove"
+      [canDelete]="canDelete"
+      [canSendEvaluationInvitation]="canSendEvaluationInvitation"
+      [canViewInvitees]="canViewInvitees"
+      (close)="closeMenu()"
+      (regenerate)="openRegenerateModal($event)"
+      (editContent)="openEditContentModal($event)"
+      (download)="downloadEvaluation($event)"
+      (viewInvitees)="openInviteesModal($event)"
+      (sendEvaluation)="openScoringModal($event)"
+      (approve)="approveEvaluation($event, 'approved')"
+      (reject)="approveEvaluation($event, 'rejected')"
+      (delete)="openDeleteModal($event)"
+    />
+  }
+
+  <!-- Modal régénération -->
+  @if (showRegenerateModal() && selectedEvaluation()) {
+    <app-regenerate-modal
+      [evaluation]="selectedEvaluation()!"
+      [regenerating]="regenerating()"
+      (close)="closeRegenerateModal()"
+      (confirm)="onRegenerateConfirm($event)"
+    />
+  }
+
+  <!-- Modal modification contenu -->
+  @if (showEditContentModal() && selectedEvaluation()) {
+    <app-edit-content-modal
+      [evaluation]="selectedEvaluation()!"
+      [saving]="savingContent()"
+      (close)="closeEditContentModal()"
+      (confirm)="onEditContentConfirm($event)"
+    />
+  }
+
+  <!-- Modal envoi d'invitations -->
+  @if (showScoringModal()) {
+    <app-evaluation-invitations
+      [jobPostId]="jobPostId()!"
+      [jobPostGoogleDriveFileId]="jobPostUnifiedDocId()"
+      [jobPostName]="title()"
+      [canSendEvaluationInvitation]="canSendEvaluationInvitation"
+      [canDelete]="canDelete"
+      [canViewGitRepo]="canViewGitRepo"
+      [canViewInvitees]="canViewInvitees"
+      [selectedEvaluationId]="selectedEvaluationIdForScoring()"
+      (closePanelEvent)="closeScoringModal()"
+      [candidateResumeItems]="resumes()"
+    />
+  }
+
+  <!-- Modal repositories / invités -->
+  @if (showInviteesModal()) {
+    <app-candidate-repositories-modal
+      [evaluation]="selectedEvaluationForInvitees()"
+      [invitees]="inviteesForEvaluation()"
+      [loadingInvitees]="loadingInvitees()"
+      [codeEvaluations]="codeEvaluations()"
+      [quizResults]="quizResults()"
+      [evaluatingInvitationId]="evaluatingInvitationId()"
+      (close)="closeInviteesModal()"
+      (evaluate)="evaluateCandidateCode($event)"
+      (openCodeEval)="openCodeEvalDetail($event)"
+      (openQuizResult)="openQuizResultDetail($event)"
+    />
+  }
+
+  <!-- Modal résultat code IA -->
+  @if (showCodeEvalModal() && activeCodeEval()) {
+    <app-code-eval-result-modal [codeEval]="activeCodeEval()!" (close)="closeCodeEvalModal()" />
+  }
+
+  <!-- Modal résultat quiz -->
+  @if (showQuizResultModal() && activeQuizResult()) {
+    <app-quiz-result-modal [quizResult]="activeQuizResult()!" (close)="closeQuizResultModal()" />
+  }
+
+  <!-- Modal suppression -->
+  @if (showDeleteModal() && evaluationToDelete()) {
+    <app-delete-confirm-modal
+      [evaluationIndex]="evaluationToDelete()!.version"
+      [deleting]="deleting()"
+      (close)="closeDeleteModal()"
+      (confirm)="confirmDelete()"
+    />
+  }
+</div>

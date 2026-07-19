@@ -1,0 +1,209 @@
+<!-- edit-eval-type-modal.component.html -->
+
+<div class="fixed inset-0 z-9999 flex items-center justify-center bg-black/40 px-4">
+  <div
+    class="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col"
+  >
+    <!-- Header -->
+    <div
+      class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700"
+    >
+      <div>
+        <h2 class="text-base font-bold text-gray-800 dark:text-white">Type d'évaluation</h2>
+        <p class="text-xs text-gray-400 mt-0.5">
+          @if (file.title) {
+            {{ file.title }}
+          } @else {
+            {{ file.name }}
+          }
+        </p>
+      </div>
+      <button
+        (click)="onClose()"
+        class="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors"
+        title="Fermer"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="w-5 h-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="px-6 py-5 space-y-4">
+      <!-- Erreur -->
+      @if (errorMsg()) {
+        <div
+          class="px-4 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm flex items-center gap-2"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          {{ errorMsg() }}
+        </div>
+      }
+
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        Sélectionnez le(s) type(s) d'évaluation associés à cette fiche de poste.
+      </p>
+
+      <!-- Option QCM -->
+      <label
+        [class]="
+          'flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ' +
+          (hasQcm()
+            ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-950/20 dark:border-indigo-500'
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800')
+        "
+      >
+        <input
+          type="checkbox"
+          [checked]="hasQcm()"
+          (change)="toggleQcm($any($event.target).checked)"
+          class="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
+        />
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-0.5">
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700"
+            >
+              QCM
+            </span>
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">
+              Questionnaire à choix multiples
+            </span>
+          </div>
+          <p class="text-xs text-gray-400 leading-relaxed">
+            Évaluation théorique — le candidat répond à un quiz en ligne.
+          </p>
+        </div>
+      </label>
+
+      <!-- Option Évaluation technique -->
+      <label
+        [class]="
+          'flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ' +
+          (requiresCoding()
+            ? 'border-orange-400 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-500'
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800')
+        "
+      >
+        <input
+          type="checkbox"
+          [checked]="requiresCoding()"
+          (change)="toggleCoding($any($event.target).checked)"
+          class="mt-0.5 w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 shrink-0"
+        />
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-0.5">
+            <span
+              class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700"
+            >
+              Évaluation technique
+            </span>
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">
+              Exercice de code
+            </span>
+          </div>
+          <p class="text-xs text-gray-400 leading-relaxed">
+            Évaluation pratique — le candidat résout un problème de programmation.
+          </p>
+        </div>
+      </label>
+
+      <!-- Résumé de sélection -->
+      @if (!hasQcm() && !requiresCoding()) {
+        <div
+          class="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4 text-gray-400 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span class="text-xs text-gray-400">Aucun type d'évaluation sélectionné.</span>
+        </div>
+      }
+    </div>
+
+    <!-- Footer -->
+    <div
+      class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700"
+    >
+      <button
+        (click)="onClose()"
+        class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+      >
+        Annuler
+      </button>
+      <button
+        (click)="save()"
+        [disabled]="saving()"
+        class="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#E2001A] hover:bg-red-700 text-white text-sm font-medium transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        @if (saving()) {
+          <svg
+            class="w-4 h-4 animate-spin"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            />
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+          Enregistrement...
+        } @else {
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          Enregistrer
+        }
+      </button>
+    </div>
+  </div>
+</div>

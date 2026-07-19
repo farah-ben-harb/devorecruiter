@@ -1,0 +1,215 @@
+<div
+  class="fixed inset-0 z-100000 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm"
+>
+  <!-- Overlay -->
+  <div
+    class="absolute inset-0"
+    (click)="close()"
+    (keydown.enter)="close()"
+    tabindex="0"
+    role="button"
+    aria-label="Fermer"
+  ></div>
+
+  <!-- MODAL -->
+  <div
+    class="relative w-full sm:max-w-2xl flex flex-col bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[92vh] sm:max-h-[85vh]"
+  >
+    <!-- HEADER — fixe -->
+    <div
+      class="shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-gray-100 dark:border-gray-800"
+    >
+      <div class="flex items-center gap-3 min-w-0">
+        <div
+          class="w-9 h-9 flex items-center justify-center rounded-lg bg-red-100 text-red-600 shrink-0"
+        >
+          <app-icon name="clipboard" />
+        </div>
+        <div class="min-w-0">
+          <h3 class="font-semibold text-gray-800 dark:text-white text-sm truncate">
+            Fiches de poste compatibles
+          </h3>
+          <p class="text-xs text-gray-400 truncate">{{ resume.name }}</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        @if (!loading() && !triggering() && result()?.status === 'done') {
+          <span
+            class="px-2 py-1 text-xs rounded-full bg-green-50 text-green-700 border border-green-200 font-medium"
+          >
+            {{ result()!.totalMatch }} match{{ result()!.totalMatch > 1 ? 's' : '' }}
+          </span>
+        }
+        <button
+          (click)="close()"
+          class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+
+    <!-- SUBHEADER — barre de stats (visible uniquement si résultats) -->
+    @if (!loading() && !triggering() && (result()?.matches?.length ?? 0) > 0) {
+      <div
+        class="shrink-0 flex items-center justify-between px-4 sm:px-6 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800"
+      >
+        <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+          {{ result()!.totalMatch }} fiche{{ result()!.totalMatch > 1 ? 's' : '' }} · score ≥ 70 %
+        </p>
+        <button
+          (click)="triggerScoring()"
+          class="text-xs px-3 py-1 rounded-lg border border-gray-200 hover:bg-white dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+        >
+          ↺ Relancer
+        </button>
+      </div>
+    }
+
+    <!-- BODY — scrollable -->
+    <div class="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-3">
+      <!-- LOADING -->
+      @if (loading()) {
+        <div class="flex flex-col items-center py-16">
+          <div
+            class="animate-spin rounded-full h-10 w-10 border-4 border-red-100 border-t-red-600"
+          ></div>
+          <p class="text-sm text-gray-400 mt-4">Chargement des résultats…</p>
+        </div>
+      }
+
+      <!-- TRIGGERING -->
+      @if (triggering()) {
+        <div class="flex flex-col items-center gap-4 py-16 text-center">
+          <div class="relative w-14 h-14">
+            <svg class="w-14 h-14" viewBox="0 0 56 56" style="transform: rotate(-90deg)">
+              <circle cx="28" cy="28" r="24" fill="none" stroke="#fecaca" stroke-width="3.5" />
+              <circle
+                cx="28"
+                cy="28"
+                r="24"
+                fill="none"
+                stroke="#E2001A"
+                stroke-width="3.5"
+                stroke-linecap="round"
+                stroke-dasharray="38 114"
+                style="transform-origin: center; animation: spin 1.2s linear infinite"
+              />
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-800 dark:text-white">Analyse en cours…</p>
+            <p class="text-xs text-gray-400 mt-1">Cette opération peut prendre quelques minutes.</p>
+          </div>
+        </div>
+      }
+
+      <!-- ERROR -->
+      @if (!loading() && error()) {
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+          {{ error() }}
+        </div>
+      }
+
+      <!-- EMPTY STATE -->
+      @if (!loading() && !error() && !result() && !triggering()) {
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+          <div
+            class="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4 text-2xl"
+          >
+            📋
+          </div>
+          <p class="font-semibold text-gray-700 text-sm">Aucun scoring effectué</p>
+          <p class="text-xs text-gray-400 mt-1 mb-6 max-w-xs">
+            Lancez l'analyse pour comparer ce CV avec vos fiches de poste.
+          </p>
+          <button
+            (click)="triggerScoring()"
+            class="px-5 py-2.5 rounded-xl text-white text-sm font-medium bg-[#E2001A] hover:bg-red-700 transition-colors active:scale-95"
+          >
+            Lancer le scoring
+          </button>
+        </div>
+      }
+
+      <!-- RÉSULTATS -->
+      @if (!loading() && !triggering() && result()?.status === 'done') {
+        <!-- Aucune fiche -->
+        @if (result()!.matches?.length === 0) {
+          <div class="text-center py-12 text-gray-400 text-sm">
+            Aucune fiche compatible trouvée.
+          </div>
+        }
+
+        <!-- Liste compacte -->
+        @if ((result()?.matches?.length ?? 0) > 0) {
+          <div class="space-y-2">
+            @for (job of result()!.matches; track job.fileId) {
+              <div
+                class="group flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-sm transition-all bg-white dark:bg-gray-900"
+              >
+                <!-- Score badge -->
+                <div
+                  class="w-11 h-11 rounded-xl flex flex-col items-center justify-center font-bold text-xs shrink-0 border-2 leading-none"
+                  [class]="scoreCircleClass(job.scoreGlobal)"
+                >
+                  <span class="text-sm font-extrabold">{{ job.scoreGlobal }}</span>
+                  <span class="text-[9px] font-normal opacity-70">%</span>
+                </div>
+
+                <!-- Infos -->
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-gray-800 dark:text-white truncate">
+                    {{ job.jobTitle }}
+                  </p>
+                  <div class="flex items-center gap-2 mt-1">
+                    <!-- Progress bar -->
+                    <div
+                      class="flex-1 h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden"
+                    >
+                      <div
+                        class="h-full rounded-full transition-all"
+                        [style.width.%]="job.scoreGlobal"
+                        [class]="scoreBarColor(job.scoreGlobal)"
+                      ></div>
+                    </div>
+                    <p class="text-[10px] text-gray-400 truncate max-w-30 sm:max-w-50 shrink-0">
+                      {{ job.fileName }}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Download -->
+                <button
+                  (click)="downloadJobPost(job.fileId, job.fileName)"
+                  class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+                  title="Télécharger"
+                >
+                  @if (downloadingFileId() === job.fileId) {
+                    <app-icon name="spinner" class="animate-spin w-4 h-4" />
+                  } @else {
+                    <app-icon name="download" />
+                  }
+                </button>
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+
+    <!-- FOOTER mobile — drag handle -->
+    <div class="sm:hidden shrink-0 flex justify-center py-2 border-t border-gray-100">
+      <div class="w-10 h-1 bg-gray-200 rounded-full"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>

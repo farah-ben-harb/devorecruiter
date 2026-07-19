@@ -1,0 +1,97 @@
+# Operating system noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*.orig
+
+# Personal tooling and local agent state
+.claude/
+.cursor/
+.gemini/
+.junie/
+
+# Node, Angular, and frontend build outputs
+**/node_modules/
+**/dist/
+**/build/
+**/.angular/
+**/.cache/
+**/.turbo/
+**/.vite/
+**/.eslintcache
+**/.nyc_output/
+**/coverage/
+**/*.tsbuildinfo
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# Python environments and caches
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.tox/
+**/.nox/
+**/venv/
+**/.venv/
+**/env/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+!.env.template
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.template
+
+# Local runtime data and caches
+**/MyDB_RH/
+**/.chroma/
+**/chroma/
+**/chroma_data/
+**/*chroma*.db
+**/*chroma*.sqlite*
+**/*.sqlite
+**/*.sqlite-journal
+**/*.db
+
+# n8n runtime data
+automation/n8n/.n8n/
+automation/n8n/executions/
+automation/n8n/*.bak
+automation/n8n/*.log
+automation/n8n/*.tmp
+
+# Terraform state and local-only inputs
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfplan
+**/*.auto.tfvars
+**/terraform.tfvars
+**/*.tfvars
+**/crash.log
+
+# Generated local documentation and export artifacts
+**/*.pdf
+
+# Docker and credential material
+**/.docker/
+**/*.pem
+**/*.key
+**/*.pfx
+**/*.p12
+**/*.kubeconfig
+**/kubeconfig
+

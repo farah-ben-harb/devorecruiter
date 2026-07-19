@@ -1,0 +1,420 @@
+<div class="fixed inset-0 z-9999 flex items-center justify-center bg-black/40 px-4">
+  <div
+    class="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]"
+  >
+    <!-- Header -->
+    <div
+      class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 shrink-0"
+    >
+      <div class="flex items-center gap-3">
+        @if (viewMode() !== 'list') {
+          <button
+            (click)="backToList()"
+            class="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors"
+            title="Retour"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        }
+        <div>
+          <h2 class="text-lg font-bold text-gray-800 dark:text-white">
+            @if (viewMode() === 'list') {
+              Critères globaux
+            } @else if (viewMode() === 'add') {
+              Ajouter un critère
+            } @else {
+              Modifier le critère
+            }
+          </h2>
+          @if (viewMode() === 'list') {
+            <p class="text-xs text-gray-400 mt-0.5">
+              {{ criteria().length }} critère(s) — s'appliquent à toutes les fiches de poste
+            </p>
+          }
+        </div>
+      </div>
+      <button
+        (click)="close.emit()"
+        class="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors"
+        title="Fermer"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="w-5 h-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Toast success -->
+    @if (successMsg()) {
+      <div
+        class="mx-6 mt-4 px-4 py-2.5 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm flex items-center gap-2 shrink-0"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="w-4 h-4 shrink-0"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+        {{ successMsg() }}
+      </div>
+    }
+
+    <!-- Body -->
+    <div class="flex-1 overflow-y-auto px-6 py-4">
+      <!-- ── LIST VIEW ── -->
+      @if (viewMode() === 'list') {
+        @if (loading()) {
+          <div class="flex items-center justify-center py-16 text-gray-400 gap-2">
+            <svg
+              class="w-5 h-5 animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              />
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
+            Chargement...
+          </div>
+        }
+
+        @if (!loading() && criteria().length === 0) {
+          <div class="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-12 h-12 opacity-30"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="1.5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+              />
+            </svg>
+            <p class="text-sm">Aucun critère global défini pour le moment.</p>
+          </div>
+        }
+
+        @if (!loading() && criteria().length > 0) {
+          <div class="space-y-4">
+            @for (entry of categoryEntries(); track entry[0]) {
+              <div>
+                <p
+                  class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2"
+                >
+                  {{ getCategoryLabel(entry[0]) }}
+                </p>
+                <div class="space-y-2">
+                  @for (c of entry[1]; track c.id) {
+                    <div
+                      class="group flex items-start gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:border-gray-200 dark:hover:border-gray-600 transition-colors"
+                    >
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+                          {{ c.label }}
+                        </p>
+                        @if (c.description) {
+                          <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-2">
+                            {{ c.description }}
+                          </p>
+                        }
+                      </div>
+
+                      <!-- Actions -->
+                      @if (confirmDeleteId() === c.id) {
+                        <!-- Confirmation inline -->
+                        <div class="flex items-center gap-2 shrink-0">
+                          <span class="text-xs text-red-500 font-medium">Supprimer ?</span>
+                          <button
+                            (click)="confirmDelete(c.id)"
+                            class="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition-colors"
+                          >
+                            Oui
+                          </button>
+                          <button
+                            (click)="cancelDelete()"
+                            class="px-2 py-1 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          >
+                            Non
+                          </button>
+                        </div>
+                      } @else {
+                        <div
+                          class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <button
+                            (click)="openEdit(c)"
+                            class="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                            title="Modifier"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              class="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            (click)="askDelete(c.id)"
+                            [disabled]="deletingId() === c.id"
+                            class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-40"
+                            title="Supprimer"
+                          >
+                            @if (deletingId() === c.id) {
+                              <svg
+                                class="w-4 h-4 animate-spin"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  class="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  stroke-width="4"
+                                />
+                                <path
+                                  class="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                />
+                              </svg>
+                            } @else {
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                stroke-width="2"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            }
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      }
+
+      <!-- ── ADD / EDIT FORM ── -->
+      @if (viewMode() === 'add' || viewMode() === 'edit') {
+        <div class="space-y-4">
+          <!-- Label -->
+          <div>
+            <label
+              for="criteria-label"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+            >
+              Libellé <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="criteria-label"
+              type="text"
+              [value]="form().label"
+              (input)="updateForm('label', $any($event.target).value)"
+              placeholder="Ex : Maîtrise de TypeScript"
+              class="..."
+            />
+          </div>
+
+          <!-- Catégorie -->
+          <div>
+            <label
+              for="criteria-category"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+              >Catégorie</label
+            >
+            <select
+              id="criteria-category"
+              [value]="form().category"
+              (change)="onCategoryChange($any($event.target).value)"
+              class="..."
+            >
+              <option value="">— Aucune catégorie —</option>
+              @for (cat of categories(); track cat.id) {
+                <option [value]="cat.value">{{ cat.label }}</option>
+              }
+              <option value="__manage__" class="text-[#E2001A] font-medium">
+                ⚙️ Gérer les catégories...
+              </option>
+            </select>
+          </div>
+
+          @if (showCategoryManager()) {
+            <app-criteria-category-manager (close)="onCategoriesUpdated($event)" />
+          }
+
+          <!-- Description -->
+          <div>
+            <label
+              for="criteria-description"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+            >
+              Description <span class="text-xs text-gray-400">(optionnel)</span>
+            </label>
+            <textarea
+              id="criteria-description"
+              [value]="form().description"
+              (input)="updateForm('description', $any($event.target).value)"
+              placeholder="Précisions sur ce critère..."
+              rows="3"
+              class="..."
+            ></textarea>
+          </div>
+
+          @if (errorMsg()) {
+            <div
+              class="px-4 py-2.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm flex items-center gap-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              {{ errorMsg() }}
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Footer -->
+    <div
+      class="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-gray-700 shrink-0 gap-3"
+    >
+      @if (viewMode() === 'list') {
+        <span class="text-xs text-gray-400">
+          Ces critères s'appliquent à toutes les fiches de poste.
+        </span>
+        <button
+          (click)="openAdd()"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#E2001A] text-white text-sm font-medium hover:bg-red-700 transition-colors"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Ajouter un critère
+        </button>
+      } @else {
+        <button
+          (click)="backToList()"
+          class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        >
+          Annuler
+        </button>
+        <button
+          (click)="save()"
+          [disabled]="saving()"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#E2001A] text-white text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          @if (saving()) {
+            <svg
+              class="w-4 h-4 animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              />
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
+            Enregistrement...
+          } @else {
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            {{ viewMode() === 'edit' ? 'Enregistrer les modifications' : 'Ajouter le critère' }}
+          }
+        </button>
+      }
+    </div>
+  </div>
+</div>

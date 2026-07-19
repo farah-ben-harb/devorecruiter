@@ -1,0 +1,96 @@
+<header
+  class="sticky top-0 flex w-full bg-white border-b border-gray-200 z-40 dark:border-gray-800 dark:bg-gray-900"
+>
+  <div class="flex items-center justify-between grow px-3 py-3 xl:px-6 lg:py-4">
+    <!-- Bouton burger -->
+    <button
+      class="flex items-center justify-center w-10 h-10 text-gray-500 rounded-lg border border-gray-200 dark:border-gray-800 dark:text-gray-400 lg:h-11 lg:w-11"
+      [ngClass]="{ 'bg-gray-100 dark:bg-white/3': isMobileOpen() }"
+      (click)="handleToggle()"
+      aria-label="Toggle Sidebar"
+    >
+      <app-icon [name]="isMobileOpen() ? 'close' : 'burger'"></app-icon>
+    </button>
+
+    <!-- Actions droite : thème + utilisateur -->
+    <div class="flex items-center gap-3">
+      <!-- Toggle thème -->
+      <button
+        (click)="toggleTheme()"
+        class="flex items-center justify-center h-10 w-10 xl:h-11 xl:w-11 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-300 hover:border-red-500 hover:text-red-500 dark:hover:border-red-400 dark:hover:text-red-400 transition-all duration-200"
+      >
+        <app-icon [name]="(theme$ | async) === 'dark' ? 'sun' : 'moon'"></app-icon>
+      </button>
+
+      <!-- Dropdown utilisateur -->
+      <div class="relative">
+        <button
+          #userMenuBtn
+          (click)="toggleDropdown()"
+          class="flex items-center gap-2 text-gray-700 dark:text-gray-400"
+        >
+          <span
+            class="overflow-hidden rounded-full h-9 w-9 xl:h-11 xl:w-11 bg-gray-200 shrink-0 flex items-center justify-center"
+          >
+            @if (picture) {
+              <img [src]="picture" [alt]="firstName" class="w-full h-full object-cover" />
+            } @else {
+              <span class="text-gray-600 font-bold text-sm xl:text-lg">
+                {{ firstName.charAt(0) }}{{ lastName.charAt(0) }}
+              </span>
+            }
+          </span>
+
+          <span class="hidden sm:block font-medium text-theme-sm truncate max-w-30">
+            {{ firstName }} {{ lastName }}
+          </span>
+
+          <app-icon
+            name="chevronDown"
+            [ngClass]="{
+              'stroke-gray-500 dark:stroke-gray-400 transition-transform duration-200': true,
+              'rotate-180': isOpen,
+            }"
+          ></app-icon>
+        </button>
+
+        @if (isOpen) {
+          <div
+            #dropdownRef
+            class="absolute right-0 mt-4 w-60 xl:w-65 flex flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark z-40"
+          >
+            <div class="flex items-center gap-3 mb-3">
+              <span
+                class="overflow-hidden rounded-full h-10 w-10 bg-gray-200 shrink-0 flex items-center justify-center"
+              >
+                @if (picture) {
+                  <img [src]="picture" [alt]="firstName" class="w-full h-full object-cover" />
+                } @else {
+                  <span class="text-gray-600 font-bold">{{ firstName.charAt(0) }}</span>
+                }
+              </span>
+              <div class="min-w-0">
+                <span
+                  class="block font-medium text-gray-700 text-theme-sm dark:text-gray-400 truncate"
+                >
+                  {{ firstName }} {{ lastName }}
+                </span>
+                <span class="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400 truncate">
+                  {{ email }}
+                </span>
+              </div>
+            </div>
+
+            <button
+              (click)="logout()"
+              class="flex items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg text-theme-sm hover:bg-red-100 hover:text-red-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300 w-full transition-colors"
+            >
+              <app-icon name="logout"></app-icon>
+              Déconnexion
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</header>

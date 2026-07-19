@@ -1,0 +1,866 @@
+{
+  "name": "1 fiche -> *cv parfait",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scoringcvfiche",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -4064,
+        416
+      ],
+      "id": "e0822858-b43c-4d83-8d25-865f2474e818",
+      "name": "Webhook",
+      "webhookId": "${WEBHOOK_ID}"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "${GOOGLE_DRIVE_FOLDER_URL}",
+            "mode": "url"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -3696,
+        544
+      ],
+      "id": "a64ea608-22ac-44fe-982d-c804e99e0f68",
+      "name": "Search CVs folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDriveOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -3232,
+        560
+      ],
+      "id": "a208f6c8-2e2e-4dc5-8372-f6c577d03841",
+      "name": "Loop Over Items (CVs)"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2768,
+        576
+      ],
+      "id": "6a69dd03-bf0d-45fd-9be8-b53a19dac16b",
+      "name": "Download CV",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDriveOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1648,
+        512
+      ],
+      "id": "b9e16945-10a0-47e9-9ca5-46aea90e482d",
+      "name": "Extract from File (CV)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.text;\n\nconst body = JSON.stringify({\n  model: \"openai/gpt-4o-mini\",\n  messages: [{\n    role: \"user\",\n    content: `Tu es un expert RH. Analyse ce CV et retourne UNIQUEMENT ce JSON sans texte avant ou après.\n\nRÈGLES CRITIQUES :\n- \"competences\" : noms EXACTS uniquement (Python, Docker, React...). \n  JAMAIS de catégories comme \"Langages de programmation\". \n  Si le CV liste des catégories, extrais les éléments DANS ces catégories.\n- IMPORTANT — SCAN COMPLET DU DOCUMENT : ne te limite PAS à la section \n  \"Compétences\" du CV. Lis ATTENTIVEMENT le texte de chaque expérience \n  professionnelle (descriptions de mission, réalisations, tâches) et \n  extrais TOUTE technologie, outil, langage, framework, méthodologie \n  ou pratique mentionnée, même si elle n'apparaît que dans une phrase \n  descriptive et pas dans la liste de compétences formelle.\n  Exemple : si une expérience dit \"responsable CI/CD, création de \n  pipelines GitOps (FluxCD)\", alors \"CI/CD\", \"GitOps\" et \"FluxCD\" \n  DOIVENT apparaître dans \"competences\", même si elles ne sont pas \n  listées dans la section compétences.\n- Ne déduplique pas de façon excessive : une compétence mentionnée une \n  seule fois dans une expérience compte autant qu'une compétence listée \n  dans la section dédiée.\n- Normalise les variantes d'écriture au moment de l'extraction mais \n  garde l'écriture la plus standard/lisible (ex: \"CI/CD\" plutôt que \n  \"cicd\" ou \"CI-CD\").\n- \"softSkills\" : TOUS les traits humains mentionnés. Ne jamais retourner liste vide si des qualités sont présentes.\n- \"langues\" : TOUTES les langues avec niveau. Ne jamais retourner liste vide si des langues sont présentes.\n- \"certifications\" : liste exacte des certifications obtenues (ex: AWS Solutions Architect, PMP, ITIL...). Retourner [] si aucune.\n- \"experiencesAnnees\" : expérience RÉELLE uniquement (stages < 6 mois = 0).\n- \"niveauFormation\" : bac+5_en_cours si cycle ingénieur/master EN COURS, bac+5 si TERMINÉ, bac+3 si licence, bac+2 si BTS/DUT, bac sinon.\n- \"domaineFormation\" : informatique | gestion_informatique | autre\n\n{\n  \"nom\": \"...\",\n  \"email\": \"...\",\n  \"telephone\": \"...\",\n  \"competences\": [\"Python\", \"Docker\", \"React\", \"CI/CD\", \"GitOps\"],\n  \"competencesGenerales\": [\"Agile\", \"Scrum\", \"UML\"],\n  \"softSkills\": [\"rigueur\", \"autonomie\"],\n  \"experiencesAnnees\": 0,\n  \"experiences\": [{\"poste\":\"...\",\"entreprise\":\"...\",\"duree\":\"...\"}],\n  \"formations\": [{\"diplome\":\"...\",\"ecole\":\"...\",\"annee\":\"...\",\"statut\":\"terminé ou en cours\"}],\n  \"niveauFormation\": \"bac | bac+2 | bac+3 | bac+5_en_cours | bac+5\",\n  \"domaineFormation\": \"informatique | gestion_informatique | autre\",\n  \"langues\": [\"Français - Courant\", \"Anglais - B2\"],\n  \"certifications\": [\"AWS Certified\", \"PMP\", \"...\"],\n  \"niveauExperience\": \"junior | intermediate | senior\",\n  \"resume\": \"...\"\n}\n\nCV :\n${text}`\n  }]\n});\n\nreturn [{ json: { body } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        672
+      ],
+      "id": "6167fbcf-00be-4871-83ee-eb2927e9b6b3",
+      "name": "Code JS (prépare CV)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.OPENROUTER_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1040,
+        672
+      ],
+      "id": "d9a92f4f-b63b-46df-8d0c-1d89ca60a37f",
+      "name": "LLM extract CV"
+    },
+    {
+      "parameters": {
+        "jsCode": "const json = $input.first().json;\n\nconst raw =\n  json.choices?.[0]?.message?.content ??\n  json.candidates?.[0]?.content?.parts?.[0]?.text ??\n  json.content ??\n  json.text;\n\nif (!raw) {\n  throw new Error(\n    \"Réponse LLM introuvable. Structure reçue : \" +\n      JSON.stringify(Object.keys(json))\n  );\n}\n\nconst cleaned = raw.replace(/```json|```/g, \"\").trim();\nconst parsed = JSON.parse(cleaned);\n\nconst webhookData = $(\"Webhook\").first().json;\n\nlet fileName = \"\";\nlet fileId = \"\";\n\ntry {\n  const loopItem = $(\"Loop Over Items (CVs)\").item.json;\n  fileName = loopItem.name ?? \"\";\n  fileId = loopItem.id ?? \"\";\n} catch (e) {\n  fileId = webhookData.body.singleResumeFileId ?? \"\";\n  fileName = webhookData.body.singleResumeFileName ?? fileId;\n}\n\nconst jobPostCriteria = webhookData.body.jobPostCriteria ?? {};\nconst globalCriteria = webhookData.body.globalCriteria ?? [];\nconst minScore = Number(webhookData.body.minScore ?? 10);\n\nconst mergedCriteria = {\n  intitulePoste: jobPostCriteria.intitulePoste ?? \"Non spécifié\",\n\n  competencesTechniquesRequises: [\n    ...new Set([\n      ...(jobPostCriteria.competencesTechniquesRequises ?? []),\n      ...globalCriteria\n        .filter(gc => gc.category === \"technique\")\n        .map(gc => gc.label),\n    ]),\n  ],\n\n  competencesGeneralesRequises: [\n    ...new Set([\n      ...(jobPostCriteria.competencesGeneralesRequises ?? []),\n      ...globalCriteria\n        .filter(gc => gc.category === \"soft-skills\")\n        .map(gc => gc.label),\n    ]),\n  ],\n\n  experienceMinimaleAnnees:\n    jobPostCriteria.experienceMinimaleAnnees ?? 0,\n\n  formationRequise:\n    jobPostCriteria.formationRequise ?? \"\",\n\n  languesRequises: [\n    ...new Set([\n      ...(jobPostCriteria.languesRequises ?? []),\n      ...globalCriteria\n        .filter(gc => gc.category === \"langue\")\n        .map(gc => gc.label),\n    ]),\n  ],\n\n  certificationsRequises:\n    jobPostCriteria.certificationsRequises ?? [],\n\n  missionsPrincipales:\n    jobPostCriteria.missionsPrincipales ?? [],\n};\n\nreturn [\n  {\n    json: {\n      cvData: parsed,\n      fileName,\n      fileId,\n      mergedCriteria,\n      minScore,\n\n      // DEBUG\n      debug: {\n        jobPostCriteria,\n        globalCriteria,\n        mergedCriteria,\n        webhookBody: webhookData.body,\n      },\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -896,
+        672
+      ],
+      "id": "546bf5f5-04ce-433e-beb1-c3904300e19b",
+      "name": "Code JS (parse CV)"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2496,
+        128
+      ],
+      "id": "b605924c-f944-47ee-a5de-8993eb91333d",
+      "name": "Loop Over Items (score)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputItem      = $input.first().json;\nconst cvData         = inputItem.cvData         ?? {};\nconst mergedCriteria = inputItem.mergedCriteria ?? {};\nconst fileId         = inputItem.fileId         ?? '';\nconst fileName       = inputItem.fileName       ?? '';\nconst intitulePoste  = mergedCriteria.intitulePoste ?? '';\n\nif (!cvData.nom && !cvData.competences) {\n  throw new Error(\"cvData vide ! Structure reçue : \" + JSON.stringify(Object.keys(inputItem)));\n}\n\n// ── NORMALISATION (nouveau) ─────────────────────────────────────────────────\n// Neutralise les variantes d'écriture : \"CI/CD\" vs \"CI-CD\" vs \"cicd\" vs \"ci cd\"\nconst normalize = s => (s ?? '').toString().toLowerCase().replace(/[\\/\\-_\\s.]/g, '');\n\n// ── LANGUES ──────────────────────────────────────────────────────────────────\nconst languesRequises = mergedCriteria.languesRequises ?? [];\nconst languesCV = (cvData.langues ?? []).map(l => l.toLowerCase());\n\nlet scoreLangues, detailLangues;\nif (!languesRequises.length) {\n  scoreLangues = 100; detailLangues = \"Aucune langue spécifiquement requise.\";\n} else {\n  const requises = languesRequises.map(l => l.toLowerCase());\n  const matchees = requises.filter(lr =>\n    languesCV.some(lc => lc.includes(lr.split(' ')[0]) || lr.includes(lc.split(' ')[0]))\n  );\n  const ratio = matchees.length / requises.length;\n  if (ratio >= 1)        { scoreLangues = 90; detailLangues = \"Toutes les langues requises présentes.\"; }\n  else if (ratio >= 0.5) { scoreLangues = 50; detailLangues = `${matchees.length}/${requises.length} langues requises présentes.`; }\n  else                   { scoreLangues = 10; detailLangues = \"Aucune langue requise présente dans le CV.\"; }\n}\n\n// ── FORMATION ────────────────────────────────────────────────────────────────\nconst niveau  = (cvData.niveauFormation  ?? '').toLowerCase();\nconst domaine = (cvData.domaineFormation ?? '').toLowerCase();\n\nconst formationMatrix = {\n  'bac+5':          { informatique: 92, gestion_informatique: 77, autre: 40 },\n  'bac+5_en_cours': { informatique: 72, gestion_informatique: 62, autre: 35 },\n  'bac+3':          { informatique: 55, gestion_informatique: 55, autre: 30 },\n  'bac+2':          { informatique: 20, gestion_informatique: 20, autre: 10 },\n  'bac':            { informatique: 10, gestion_informatique: 10, autre:  5 },\n};\nconst scoreFormation = formationMatrix[niveau]?.[domaine]\n  ?? formationMatrix[niveau]?.['autre']\n  ?? 5;\nconst detailFormation = `Niveau: ${niveau || 'inconnu'}, Domaine: ${domaine || 'inconnu'}.`;\n\n// ── EXPÉRIENCE ───────────────────────────────────────────────────────────────\nconst expCV  = Number(cvData.experiencesAnnees ?? 0);\nconst expMin = Number(mergedCriteria.experienceMinimaleAnnees ?? 0);\nconst ecart  = expMin - expCV;\n\nlet scoreExp, detailExp;\nif (expCV >= expMin)  { scoreExp = 90; detailExp = `${expCV} ans >= minimum requis (${expMin} ans).`; }\nelse if (ecart <= 2)  { scoreExp = 70; detailExp = `Écart de ${ecart} an(s) avec le minimum requis.`; }\nelse if (ecart <= 5)  { scoreExp = 42; detailExp = `Écart de ${ecart} ans avec le minimum requis.`; }\nelse                  { scoreExp = 15; detailExp = `Écart important : ${expCV} ans vs ${expMin} ans requis.`; }\n\n// ── SOFT SKILLS ──────────────────────────────────────────────────────────────\nconst softSkills = cvData.softSkills ?? [];\nconst nbSoft = softSkills.length;\n\nlet scoreSoft, detailSoft;\nif (nbSoft >= 5)      { scoreSoft = 85; detailSoft = `${nbSoft} soft skills : ${softSkills.join(', ')}.`; }\nelse if (nbSoft >= 3) { scoreSoft = 65; detailSoft = `${nbSoft} soft skills : ${softSkills.join(', ')}.`; }\nelse if (nbSoft >= 1) { scoreSoft = 42; detailSoft = `${nbSoft} soft skill(s) : ${softSkills.join(', ')}.`; }\nelse                  { scoreSoft = 10; detailSoft = \"Aucun soft skill mentionné.\"; }\n\n// ── CERTIFICATIONS ───────────────────────────────────────────────────────────\nconst certificationsRequises = mergedCriteria.certificationsRequises ?? [];\nconst certificationsCV = (cvData.certifications ?? []).map(c => c.toLowerCase());\n\nlet scoreCertif = null, detailCertif = '', hasCertifCritere = false;\nlet matchedCertif = [], missingCertif = [];\n\nif (certificationsRequises.length > 0) {\n  hasCertifCritere = true;\n  const requises = certificationsRequises.map(c => c.toLowerCase());\n  const matched = [], missing = [];\n\n  requises.forEach(cr => {\n    const found = certificationsCV.find(cc =>\n      cc.includes(cr.split(' ')[0]) || cr.includes(cc.split(' ')[0])\n    );\n    if (found) {\n      const original = (cvData.certifications ?? []).find(cc =>\n        cc.toLowerCase().includes(cr.split(' ')[0]) || cr.includes(cc.toLowerCase().split(' ')[0])\n      );\n      matched.push(original ?? found);\n    } else {\n      missing.push(certificationsRequises.find(r => r.toLowerCase() === cr) ?? cr);\n    }\n  });\n\n  const ratio = matched.length / requises.length;\n  if (ratio >= 1)        { scoreCertif = 95; detailCertif = \"Toutes les certifications requises présentes.\"; }\n  else if (ratio >= 0.5) { scoreCertif = 60; detailCertif = `${matched.length}/${requises.length} certifications requises présentes.`; }\n  else if (ratio > 0)    { scoreCertif = 30; detailCertif = `${matched.length}/${requises.length} certification(s) requise(s) présente(s).`; }\n  else                   { scoreCertif = 0;  detailCertif = \"Aucune certification requise présente dans le CV.\"; }\n\n  matchedCertif = matched;\n  missingCertif = missing;\n}\n\n// ── COMPÉTENCES TECHNIQUES (avec normalisation) ─────────────────────────────\nconst competencesCV       = cvData.competences ?? [];\nconst competencesRequises = mergedCriteria.competencesTechniquesRequises ?? [];\n\nconst competencesNorm = competencesCV.map(normalize);\nconst matchesTech = competencesRequises.filter(req =>\n  competencesNorm.some(c => c.includes(normalize(req)) || normalize(req).includes(c))\n);\nconst ratioFallback = competencesRequises.length ? matchesTech.length / competencesRequises.length : 1;\nlet scoreTechFallback;\nif (ratioFallback >= 0.7)      scoreTechFallback = 85;\nelse if (ratioFallback >= 0.4) scoreTechFallback = 60;\nelse if (ratioFallback > 0)    scoreTechFallback = 30;\nelse                           scoreTechFallback = 8;\n\n// ── MATCHING DÉTAILLÉ (avec normalisation) ──────────────────────────────────\nconst competencesGeneralesRequises = mergedCriteria.competencesGeneralesRequises ?? [];\nconst competencesGeneralesCV = [\n  ...(cvData.competences ?? []),\n  ...(cvData.competencesGenerales ?? []),\n  ...(cvData.softSkills ?? []),\n].map(normalize);\n\nconst matchedTechInCv    = competencesRequises.filter(req => competencesNorm.some(c => c.includes(normalize(req)) || normalize(req).includes(c)));\nconst missingTechInCv    = competencesRequises.filter(req => !competencesNorm.some(c => c.includes(normalize(req)) || normalize(req).includes(c)));\nconst matchedGeneralInCv = competencesGeneralesRequises.filter(req => competencesGeneralesCV.some(c => c.includes(normalize(req)) || normalize(req).includes(c)));\nconst missingGeneralInCv = competencesGeneralesRequises.filter(req => !competencesGeneralesCV.some(c => c.includes(normalize(req)) || normalize(req).includes(c)));\nconst matchedLanguesInCv = languesRequises.filter(lr => languesCV.some(lc => lc.includes(lr.toLowerCase().split(' ')[0]) || lr.toLowerCase().includes(lc.split(' ')[0])));\nconst missingLanguesInCv = languesRequises.filter(lr => !languesCV.some(lc => lc.includes(lr.toLowerCase().split(' ')[0]) || lr.toLowerCase().includes(lc.split(' ')[0])));\n\n// ── PROMPT LLM ───────────────────────────────────────────────────────────────\nconst body = JSON.stringify({\n  model: \"openai/gpt-4o-mini\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"Tu es un expert technique RH. Quand tu évalues les compétences, tu tiens compte des SYNONYMES et ÉQUIVALENCES sémantiques. Ne jamais signaler comme point faible une compétence que le candidat possède sous une autre dénomination.\"\n    },\n    {\n      role: \"user\",\n      content: `Expert technique RH. Évalue UNIQUEMENT les compétences techniques.\nRetourne UNIQUEMENT ce JSON valide sans texte avant ou après :\n{\n  \"score\": 0,\n  \"detail\": \"max 2 lignes\",\n  \"pointsForts\": [\"...\"],\n  \"pointsFaibles\": [\"...\"],\n  \"resumeCandidat\": \"résumé global candidat max 2 lignes\",\n  \"matchedTech\": [\"compétences requises TROUVÉES\"],\n  \"missingTech\": [\"compétences requises MANQUANTES\"]\n}\n\nRègles score :\n- >= 70% compétences requises présentes → score 75-95\n- 40-70% → score 45-74\n- < 40% → score 10-44\n- Aucune → score 0-15\n\nCompétences CV : ${JSON.stringify(competencesCV)}\nCompétences requises : ${JSON.stringify(competencesRequises)}`\n    }\n  ]\n});\n\nreturn [{\n  json: {\n    body, scoreTechFallback,\n    scoreLangues, detailLangues,\n    scoreFormation, detailFormation,\n    scoreExp, detailExp,\n    scoreSoft, detailSoft,\n    hasCertifCritere, scoreCertif, detailCertif,\n    matchedCertif, missingCertif,\n    fileId, fileName, intitulePoste,\n    cvData, mergedCriteria,\n    matchedTechInCv, missingTechInCv,\n    matchedGeneralInCv, missingGeneralInCv,\n    matchedLanguesInCv, missingLanguesInCv,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2256,
+        128
+      ],
+      "id": "ca920077-5d7a-4f94-939a-ba18521ad57f",
+      "name": "Code JS (prépare scoring)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.OPENROUTER_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -2048,
+        128
+      ],
+      "id": "18c51c0e-31c4-4f07-964e-3f978fae8c2b",
+      "name": "LLM scoring"
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta    = $('Code JS (prépare scoring)').item.json;\nconst llmJson = $input.first().json;\n\nconst raw = llmJson.choices?.[0]?.message?.content ?? llmJson.content ?? llmJson.text;\n\nlet techResult;\ntry {\n  techResult = JSON.parse((raw ?? '').replace(/```json|```/g, '').trim());\n} catch(e) {\n  techResult = {\n    score: meta.scoreTechFallback,\n    detail: \"Score calculé automatiquement.\",\n    pointsForts: [],\n    pointsFaibles: [],\n    resumeCandidat: meta.cvData?.resume ?? '',\n    matchedTech: meta.matchedTechInCv ?? [],\n    missingTech: meta.missingTechInCv ?? [],\n  };\n}\n\nconst scoreTech = Number(techResult.score ?? meta.scoreTechFallback);\nconst hasCertif   = meta.hasCertifCritere ?? false;\nconst scoreCertif = meta.scoreCertif ?? null;\n\nlet scoreGlobal;\nif (hasCertif && scoreCertif !== null) {\n  scoreGlobal = Math.round(\n    scoreTech           * 0.35 +\n    meta.scoreExp       * 0.25 +\n    meta.scoreFormation * 0.13 +\n    meta.scoreSoft      * 0.09 +\n    meta.scoreLangues   * 0.05 +\n    scoreCertif         * 0.13\n  );\n} else {\n  scoreGlobal = Math.round(\n    scoreTech           * 0.40 +\n    meta.scoreExp       * 0.30 +\n    meta.scoreFormation * 0.15 +\n    meta.scoreSoft      * 0.10 +\n    meta.scoreLangues   * 0.05\n  );\n}\n\nconst minScore = Number($('Webhook').first().json.body.minScore ?? 10);\n\n// ✅ SOURCE DE VÉRITÉ = calcul JS déterministe (meta.*)\n// Le LLM (techResult.matchedTech/missingTech) n'est PAS utilisé ici pour le\n// résultat officiel, il est conservé à part dans \"llmSuggested\" (debug/référence)\nconst matchedCriteriaInCv = {\n  competencesTechniques: {\n    matched: meta.matchedTechInCv ?? [],\n    missing: meta.missingTechInCv ?? [],\n  },\n  competencesGenerales: {\n    matched: meta.matchedGeneralInCv ?? [],\n    missing: meta.missingGeneralInCv ?? [],\n  },\n  langues: {\n    matched: meta.matchedLanguesInCv ?? [],\n    missing: meta.missingLanguesInCv ?? [],\n  },\n  ...(hasCertif ? {\n    certifications: {\n      matched: meta.matchedCertif ?? [],\n      missing: meta.missingCertif ?? [],\n    }\n  } : {}),\n};\n\nconst termsToHighlight = [\n  ...(matchedCriteriaInCv.competencesTechniques?.matched ?? []),\n  ...(matchedCriteriaInCv.competencesGenerales?.matched ?? []),\n  ...(matchedCriteriaInCv.langues?.matched ?? []),\n  ...(matchedCriteriaInCv.certifications?.matched ?? []),\n  ...(meta.cvData?.softSkills ?? []),\n  ...(meta.cvData?.experiences ?? []).map(e => e.poste).filter(Boolean),\n  ...(meta.cvData?.experiences ?? []).map(e => e.entreprise).filter(Boolean),\n  ...(meta.cvData?.formations ?? []).map(f => f.diplome).filter(Boolean),\n  ...(meta.cvData?.formations ?? []).map(f => f.ecole).filter(Boolean),\n].filter(t => t && t.length > 1);\n\nreturn [{\n  json: {\n    fileId:   meta.fileId,\n    fileName: meta.fileName,\n    jobTitle: meta.intitulePoste,\n    scoreGlobal,\n    status: scoreGlobal >= minScore ? 'MATCH' : 'NO_MATCH',\n    termsToHighlight,\n    matchedCriteriaInCv,\n    // 🆕 Référence qualitative du LLM, gardée à part pour debug/comparaison\n    // (ne remplace jamais matchedCriteriaInCv)\n    llmSuggested: {\n      matchedTech: techResult.matchedTech ?? [],\n      missingTech: techResult.missingTech ?? [],\n    },\n    detail: {\n      scoreGlobal,\n      technicalSkills: { score: scoreTech,          detail: techResult.detail ?? '' },\n      experience:      { score: meta.scoreExp,       detail: meta.detailExp },\n      education:       { score: meta.scoreFormation, detail: meta.detailFormation },\n      softSkills:      { score: meta.scoreSoft,      detail: meta.detailSoft },\n      languages:       { score: meta.scoreLangues,   detail: meta.detailLangues },\n      ...(hasCertif ? {\n        certifications: {\n          score: scoreCertif,\n          detail: meta.detailCertif,\n          matched: meta.matchedCertif ?? [],\n          missing: meta.missingCertif ?? [],\n        }\n      } : {}),\n      strengths:      techResult.pointsForts   ?? [],\n      weaknesses:     techResult.pointsFaibles ?? [],\n      resume:         techResult.resumeCandidat ?? meta.cvData?.resume ?? '',\n      recommendation: scoreGlobal >= minScore ? 'retenir' : 'ecarter',\n    },\n    createdAt: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1872,
+        128
+      ],
+      "id": "0619b2d2-024a-4876-94d6-3b6566944f53",
+      "name": "Code JS (parse score)"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "matches",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -2112,
+        -128
+      ],
+      "id": "52c734ff-e6c6-4132-a44c-e63b1ea8179a",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \n  \"intitulePoste\": $json.intitulePoste, \n  \"totalMatch\": $json.matches.filter(m => m.status === 'MATCH').length,\n  \"matches\": $json.matches.filter(m => m.status === 'MATCH')\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1728,
+        -128
+      ],
+      "id": "654e2210-0078-4579-b094-3904ee7435bb",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0a0cc803-9dfe-4b47-af53-d3e9d970c831",
+              "leftValue": "={{ $json.scoreGlobal }}",
+              "rightValue": "={{ Number($('Webhook').first().json.body.minScore ?? 10) }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1680,
+        128
+      ],
+      "id": "1f5ad3bc-8e39-49b8-8190-4b0bfa667c05",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8f56edeb-2b9d-4758-b587-1d92c21acdb1",
+              "leftValue": "={{ $json.body.singleResumeFileId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -3904,
+        416
+      ],
+      "id": "35696ea5-e513-4ca6-81b5-04f5d60b6f97",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.body.singleResumeFileId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -3712,
+        400
+      ],
+      "id": "56ae59ac-7ea5-41dc-8f0d-93b790697373",
+      "name": "Download Single CV",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDriveOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $('Webhook').first().json;\nconst inputItem = $input.first();\n\nreturn [{\n  json: {\n    id: webhookData.body.singleResumeFileId,\n    name: webhookData.body.singleResumeFileName ?? webhookData.body.singleResumeFileId,\n  },\n  binary: inputItem.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3472,
+        400
+      ],
+      "id": "020c11dd-984b-4321-a6a9-bde8d3acda81",
+      "name": "Set Single CV Meta"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $binary.data.fileExtension }}",
+                    "rightValue": "pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "77fe93f7-b732-4048-801d-49c333cee35c"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "86e04177-5bd6-437d-b2f8-ac2633544cfa",
+                    "leftValue": "={{ $binary.data.fileExtension }}",
+                    "rightValue": "docx",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -2400,
+        528
+      ],
+      "id": "a345cbb2-2f4a-4ad1-9e4f-295bd5f60825",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1648,
+        672
+      ],
+      "id": "e38de1db-b872-4ee0-86d4-fc68d32ba387",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "// APRÈS (corrigé) :\nconst item = $input.first();\n\n// La réponse est déjà binaire (responseFormat: file)\n// On récupère le nom depuis les métadonnées ou on met un nom par défaut\nconst originalFileName = item.binary?.data?.fileName\n  ?? item.json?.fileName\n  ?? 'converted.pdf';\n\nconst baseName = originalFileName.replace(/\\.docx$/i, '');\n\nreturn [{\n  json: {},\n  binary: {\n    data: {\n      ...item.binary.data,\n      mimeType: 'application/pdf',\n      fileExtension: 'pdf',\n      fileName: `${baseName}.pdf`\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1856,
+        672
+      ],
+      "id": "e39f302e-0643-404e-ae04-865c2e38f15c",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\n\n// Récupérer le buffer binaire\nconst binaryBuffer = await this.helpers.getBinaryDataBuffer(0, 'data');\n\n// Convertir en base64\nconst base64String = binaryBuffer.toString('base64');\n\nreturn [{\n  json: {\n    fileName: item.binary.data.fileName,\n    mimeType: item.binary.data.mimeType,\n    fileBase64: base64String\n  },\n  binary: item.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2192,
+        672
+      ],
+      "id": "4e81eec7-6138-436e-aaf8-7a799fbc65e8",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://v2.convertapi.com/convert/docx/to/pdf?Token=' + $env.CONVERTAPI_SECRET }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "Token",
+              "value": "={{ $env.CONVERTAPI_SECRET }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/octet-stream"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"Parameters\": [\n    {\n      \"Name\": \"File\",\n      \"FileValue\": {\n        \"Name\": \"{{ $json.fileName }}\",\n        \"Data\": \"{{ $json.fileBase64 }}\"\n      }\n    }\n  ]\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -2016,
+        672
+      ],
+      "id": "141be0b4-f24c-4a7c-8660-d3e1aeefa012",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c654dd86-2e19-4d58-88f6-168898627626",
+              "leftValue": "={{ $('Webhook').first().json.body.singleResumeFileId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -688,
+        672
+      ],
+      "id": "ab521d38-2380-4db5-b7dd-eda90c1fdc56",
+      "name": "If2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search CVs folder": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items (CVs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items (CVs)": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items (score)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download CV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download CV": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File (CV)": {
+      "main": [
+        [
+          {
+            "node": "Code JS (prépare CV)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code JS (prépare CV)": {
+      "main": [
+        [
+          {
+            "node": "LLM extract CV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM extract CV": {
+      "main": [
+        [
+          {
+            "node": "Code JS (parse CV)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code JS (parse CV)": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items (score)": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code JS (prépare scoring)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code JS (prépare scoring)": {
+      "main": [
+        [
+          {
+            "node": "LLM scoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM scoring": {
+      "main": [
+        [
+          {
+            "node": "Code JS (parse score)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code JS (parse score)": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items (score)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items (score)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Download Single CV",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search CVs folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Single CV": {
+      "main": [
+        [
+          {
+            "node": "Set Single CV Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Single CV Meta": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Extract from File (CV)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code JS (prépare CV)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items (score)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items (CVs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0aa3ea1f-67eb-4363-a126-8a1c4e9fe938",
+  "meta": {
+    "note": "Sanitized metadata"
+  },
+  "id": "S7lNLFBbD8OEWNQ5",
+  "tags": [
+    {
+      "updatedAt": "2026-04-08T15:05:33.084Z",
+      "createdAt": "2026-04-08T15:05:33.084Z",
+      "id": "HEAsVmPtvZNq0Xay",
+      "name": "RH"
+    },
+    {
+      "updatedAt": "2026-04-08T15:06:18.605Z",
+      "createdAt": "2026-04-08T15:06:18.605Z",
+      "id": "cIdOkGT2mPxHqRLq",
+      "name": "CV Scoring"
+    }
+  ]
+}

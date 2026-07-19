@@ -1,0 +1,745 @@
+name: DevoRecruiter Monorepo Pipeline
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.detect.outputs.frontend }}
+      bff: ${{ steps.detect.outputs.bff }}
+      fastapi: ${{ steps.detect.outputs.fastapi }}
+      n8n: ${{ steps.detect.outputs.n8n }}
+      terraform: ${{ steps.detect.outputs.terraform }}
+      all: ${{ steps.detect.outputs.all }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed areas
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          changed_files_file="$(mktemp)"
+
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            base_sha="${{ github.event.before }}"
+          else
+            if git rev-parse HEAD^ >/dev/null 2>&1; then
+              base_sha="$(git rev-parse HEAD^)"
+            else
+              base_sha=""
+            fi
+          fi
+
+          if [[ -z "${base_sha}" || "${base_sha}" =~ ^0+$ ]]; then
+            git ls-files > "${changed_files_file}"
+            all=true
+          else
+            git diff --name-only "${base_sha}" "${GITHUB_SHA}" > "${changed_files_file}"
+            all=false
+          fi
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            all=true
+          fi
+
+          matches() {
+            local pattern="$1"
+            grep -Eq "${pattern}" "${changed_files_file}"
+          }
+
+          frontend=false
+          bff=false
+          fastapi=false
+          n8n=false
+          terraform=false
+
+          if matches '^(apps/frontend/|\.github/workflows/pipeline\.yml$|\.github/scripts/|scripts/|\.gitignore$|SECURITY\.md$)'; then
+            all=true
+          fi
+
+          if matches '^apps/frontend/'; then frontend=true; fi
+          if matches '^apps/api-bff/'; then bff=true; fi
+          if matches '^apps/api-back/'; then fastapi=true; fi
+          if matches '^automation/n8n/'; then n8n=true; fi
+          if matches '^infrastructure/'; then terraform=true; fi
+
+          {
+            echo "frontend=${frontend}"
+            echo "bff=${bff}"
+            echo "fastapi=${fastapi}"
+            echo "n8n=${n8n}"
+            echo "terraform=${terraform}"
+            echo "all=${all}"
+          } >> "${GITHUB_OUTPUT}"
+
+  repository-secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks secret scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.0 detect --source /repo --redact --no-banner --exit-code 1
+
+  frontend-ci:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/frontend
+        run: npm ci
+
+      - name: Run lint
+        working-directory: apps/frontend
+        run: npm run lint:ci
+
+      - name: Run type check
+        working-directory: apps/frontend
+        run: npm run typecheck
+
+      - name: Run tests
+        working-directory: apps/frontend
+        run: npm run test:ci
+
+      - name: Build production application
+        working-directory: apps/frontend
+        run: npm run build
+
+      - name: Validate Docker build
+        run: docker build -t devorecruiter-front:ci-local apps/frontend
+
+      - name: Smoke test runtime container
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/mock-bff.py <<'PY'
+          from http.server import BaseHTTPRequestHandler, HTTPServer
+
+          class Handler(BaseHTTPRequestHandler):
+              def do_GET(self):
+                  self.send_response(200)
+                  self.send_header("Content-Type", "application/json")
+                  self.end_headers()
+                  self.wfile.write(b'{"status":"mock-bff"}')
+
+              def log_message(self, format, *args):
+                  return
+
+          HTTPServer(("0.0.0.0", 3000), Handler).serve_forever()
+          PY
+          python3 /tmp/mock-bff.py &
+          MOCK_PID=$!
+          docker run --rm -d \
+            --name devorecruiter-front-ci \
+            --add-host=host.docker.internal:host-gateway \
+            -e BFF_UPSTREAM=http://host.docker.internal:3000 \
+            -p 8080:80 \
+            devorecruiter-front:ci-local
+          cleanup() {
+            docker stop devorecruiter-front-ci >/dev/null 2>&1 || true
+            kill "$MOCK_PID" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/healthz >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:8080/readyz
+          curl --fail --silent http://127.0.0.1:8080/ | grep -qi '<app-root'
+          curl --fail --silent http://127.0.0.1:8080/api/smoke | grep -q 'mock-bff'
+
+  frontend-security:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Run npm dependency audit
+        working-directory: apps/frontend
+        run: npm audit --audit-level=high
+
+      - name: Setup Python for Semgrep
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+
+      - name: Install Semgrep
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install semgrep==1.170.0
+
+      - name: Run Semgrep SAST
+        working-directory: apps/frontend
+        run: semgrep scan --config p/default --error .
+
+  frontend-publish:
+    needs:
+      - detect-changes
+      - repository-secret-scan
+      - frontend-ci
+      - frontend-security
+    if: needs.frontend-ci.result == 'success' && needs.frontend-security.result == 'success' && needs.repository-secret-scan.result == 'success' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.all == 'true')
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_REF: ${{ vars.DOCKERHUB_USERNAME }}/devorecruiter-front:${{ github.sha }}
+      IMAGE_PLATFORM: linux/amd64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c
+
+      - name: Build release image
+        id: build_and_push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
+        with:
+          context: apps/frontend
+          file: apps/frontend/Dockerfile
+          platforms: linux/amd64
+          load: true
+          provenance: false
+          sbom: false
+          tags: ${{ env.IMAGE_REF }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=devorecruiter-front
+
+      - name: Scan release image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{ env.IMAGE_REF }}
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
+      - name: Push release image
+        run: docker push "$IMAGE_REF"
+
+      - name: Verify published image
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE_DIGEST="$(docker buildx imagetools inspect "$IMAGE_REF" | awk '/Digest:/ {print $2; exit}')"
+          RAW_MANIFEST="$(docker buildx imagetools inspect --raw "$IMAGE_REF")"
+          IMAGE_SIZE="$(printf '%s' "$RAW_MANIFEST" | python3 -c "import json, sys; manifest = json.load(sys.stdin); print(manifest.get('config', {}).get('size', 0) + sum(layer.get('size', 0) for layer in manifest.get('layers', [])))")"
+          {
+            echo "Image: $IMAGE_REF"
+            echo "Digest: $IMAGE_DIGEST"
+            echo "Platform: $IMAGE_PLATFORM"
+            echo "Size: ${IMAGE_SIZE} bytes"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  bff-ci:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.bff == 'true' || needs.detect-changes.outputs.all == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      CORS_ORIGIN: http://localhost:4200
+      FRONTEND_URL: http://localhost:4200
+      FASTAPI_BASE_URL: http://devorecruiter-api-back:8000
+      DATABASE_HOST: localhost
+      DATABASE_PORT: "5432"
+      DATABASE_USER: test
+      DATABASE_PASSWORD: test
+      DATABASE_NAME: test
+      DATABASE_SYNCHRONIZE: "false"
+      JWT_SECRET: test-secret-value-123
+      JWT_REFRESH_SECRET: test-refresh-secret-123
+      GOOGLE_CLIENT_ID: test-client-id
+      GOOGLE_CLIENT_SECRET: test-client-secret
+      GOOGLE_CALLBACK_URL: http://localhost:3000/auth/google/callback
+      N8N_WEBHOOK_URL: http://localhost:5678/webhook/test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/api-bff/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/api-bff
+        run: npm ci
+
+      - name: Run tests
+        working-directory: apps/api-bff
+        run: npm test
+
+      - name: Build application
+        working-directory: apps/api-bff
+        run: npm run build
+
+      - name: Validate Docker build
+        run: docker build -t devorecruiter-api-bff:ci-local apps/api-bff
+
+      - name: Smoke test runtime container
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d \
+            --name devorecruiter-api-bff-ci \
+            --add-host=host.docker.internal:host-gateway \
+            -p 3000:3000 \
+            -e NODE_ENV=test \
+            -e PORT=3000 \
+            -e CORS_ORIGIN=http://localhost:4200 \
+            -e FRONTEND_URL=http://localhost:4200 \
+            -e FASTAPI_BASE_URL=http://devorecruiter-api-back:8000 \
+            -e DATABASE_HOST=host.docker.internal \
+            -e DATABASE_PORT=5432 \
+            -e DATABASE_USER=test \
+            -e DATABASE_PASSWORD=test \
+            -e DATABASE_NAME=test \
+            -e DATABASE_SYNCHRONIZE=false \
+            -e JWT_SECRET=test-secret-value-123 \
+            -e JWT_REFRESH_SECRET=test-refresh-secret-123 \
+            -e GOOGLE_CLIENT_ID=test-client-id \
+            -e GOOGLE_CLIENT_SECRET=test-client-secret \
+            -e GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback \
+            -e GITHUB_TOKEN=ci-placeholder-token \
+            -e GROQ_API_KEY=ci-placeholder-groq-key \
+            -e N8N_WEBHOOK_URL=http://localhost:5678/webhook/test \
+            devorecruiter-api-bff:ci-local
+          cleanup() {
+            docker rm -f devorecruiter-api-bff-ci >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:3000/healthz >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          if ! curl --fail --silent http://127.0.0.1:3000/healthz >/dev/null; then
+            docker logs devorecruiter-api-bff-ci
+            exit 1
+          fi
+          curl --fail --silent http://127.0.0.1:3000/readyz
+          docker stop --time 10 devorecruiter-api-bff-ci >/dev/null
+
+      - name: Smoke test Puppeteer PDF generation
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -i devorecruiter-api-bff:ci-local node <<'NODE'
+          const { PdfGeneratorService } = require('./dist/src/technical-evaluations/services/pdfs-generator/pdf-generator.service.js');
+
+          (async () => {
+            const service = new PdfGeneratorService();
+            const pdf = await service.generateFromRawHtml('<!doctype html><html><body><h1>CI PDF smoke</h1><p>ok</p></body></html>');
+            if (!Buffer.isBuffer(pdf) || pdf.length < 1000) {
+              throw new Error(`PDF smoke failed with ${pdf.length} bytes`);
+            }
+            console.log(`PDF smoke produced ${pdf.length} bytes`);
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
+  bff-security:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.bff == 'true' || needs.detect-changes.outputs.all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/api-bff/package-lock.json
+
+      - name: Run npm dependency audit
+        working-directory: apps/api-bff
+        run: npm audit --audit-level=high
+
+      - name: Setup Python for Semgrep
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+
+      - name: Install Semgrep
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install semgrep==1.170.0
+
+      - name: Run Semgrep SAST
+        working-directory: apps/api-bff
+        run: semgrep scan --config p/default --error .
+
+  bff-publish:
+    needs:
+      - detect-changes
+      - repository-secret-scan
+      - bff-ci
+      - bff-security
+    if: needs.bff-ci.result == 'success' && needs.bff-security.result == 'success' && needs.repository-secret-scan.result == 'success' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && (needs.detect-changes.outputs.bff == 'true' || needs.detect-changes.outputs.all == 'true')
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_REF: ${{ vars.DOCKERHUB_USERNAME }}/devorecruiter-api-bff:${{ github.sha }}
+      IMAGE_PLATFORM: linux/amd64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c
+
+      - name: Build release image
+        id: build_and_push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
+        with:
+          context: apps/api-bff
+          file: apps/api-bff/Dockerfile
+          platforms: linux/amd64
+          load: true
+          provenance: false
+          sbom: false
+          tags: ${{ env.IMAGE_REF }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=devorecruiter-api-bff
+
+      - name: Scan release image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{ env.IMAGE_REF }}
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
+      - name: Push release image
+        run: docker push "$IMAGE_REF"
+
+      - name: Verify published image
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE_DIGEST="$(docker buildx imagetools inspect "$IMAGE_REF" | awk '/Digest:/ {print $2; exit}')"
+          RAW_MANIFEST="$(docker buildx imagetools inspect --raw "$IMAGE_REF")"
+          IMAGE_SIZE="$(printf '%s' "$RAW_MANIFEST" | python3 -c "import json, sys; manifest = json.load(sys.stdin); print(manifest.get('config', {}).get('size', 0) + sum(layer.get('size', 0) for layer in manifest.get('layers', [])))")"
+          {
+            echo "Image: $IMAGE_REF"
+            echo "Digest: $IMAGE_DIGEST"
+            echo "Platform: $IMAGE_PLATFORM"
+            echo "Size: ${IMAGE_SIZE} bytes"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  fastapi-ci:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.fastapi == 'true' || needs.detect-changes.outputs.all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.10'
+          cache: pip
+          cache-dependency-path: |
+            apps/api-back/requirements.txt
+            apps/api-back/constraints.txt
+
+      - name: Install dependencies
+        working-directory: apps/api-back
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.13.0
+          python -m pip install -r requirements.txt
+          python -m pip check
+
+      - name: Compile application
+        working-directory: apps/api-back
+        run: python -m compileall app
+
+      - name: Validate application imports
+        working-directory: apps/api-back
+        run: python -c "from app.main import app; paths = app.openapi()['paths']; assert app.title == 'API Chatbot RH'; assert '/chat' in paths; assert '/chat/reset' in paths; assert '/healthz' in paths; assert '/readyz' in paths"
+
+      - name: Smoke test application startup
+        working-directory: apps/api-back
+        env:
+          GROQ_API_KEY: ci-placeholder
+          CHROMA_PERSIST_DIRECTORY: /tmp/devorecruiter-chroma
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/devorecruiter-api-back.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          READY=0
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:8000/healthz > /dev/null; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" -ne 1 ]; then
+            cat /tmp/devorecruiter-api-back.log
+            exit 1
+          fi
+          curl --fail --silent --show-error http://127.0.0.1:8000/healthz > /dev/null
+          curl --fail --silent --show-error http://127.0.0.1:8000/readyz > /dev/null
+          test ! -e /tmp/devorecruiter-chroma
+
+      - name: Validate Docker build
+        run: docker build -t devorecruiter-api-back:ci-local apps/api-back
+
+      - name: Smoke test runtime container
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -d \
+            --name devorecruiter-api-back-ci \
+            -p 8000:8000 \
+            -e GROQ_API_KEY=ci-placeholder \
+            -e CHROMA_PERSIST_DIRECTORY=/tmp/devorecruiter-chroma \
+            devorecruiter-api-back:ci-local
+          cleanup() {
+            docker stop devorecruiter-api-back-ci >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:8000/healthz >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:8000/readyz
+          docker exec devorecruiter-api-back-ci sh -c 'test ! -e /tmp/devorecruiter-chroma'
+          docker stop --time 10 devorecruiter-api-back-ci >/dev/null
+
+  fastapi-security:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.fastapi == 'true' || needs.detect-changes.outputs.all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.10'
+
+      - name: Install security scanners
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pip-audit semgrep==1.170.0
+
+      - name: Run source security gates
+        working-directory: apps/api-back
+        shell: bash
+        run: |
+          set +e
+
+          pip-audit -r requirements.txt
+          PIP_AUDIT_EXIT=$?
+
+          semgrep scan --config p/default --error .
+          SEMGREP_EXIT=$?
+
+          echo "pip-audit exit code: $PIP_AUDIT_EXIT"
+          echo "semgrep exit code: $SEMGREP_EXIT"
+
+          if [ "$PIP_AUDIT_EXIT" -ne 0 ] || [ "$SEMGREP_EXIT" -ne 0 ]; then
+            exit 1
+          fi
+
+  fastapi-publish:
+    needs:
+      - detect-changes
+      - repository-secret-scan
+      - fastapi-ci
+      - fastapi-security
+    if: needs.fastapi-ci.result == 'success' && needs.fastapi-security.result == 'success' && needs.repository-secret-scan.result == 'success' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && (needs.detect-changes.outputs.fastapi == 'true' || needs.detect-changes.outputs.all == 'true')
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_REF: ${{ vars.DOCKERHUB_USERNAME }}/devorecruiter-api-back:${{ github.sha }}
+      IMAGE_PLATFORM: linux/amd64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c
+
+      - name: Build release image
+        id: build_and_push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
+        with:
+          context: apps/api-back
+          file: apps/api-back/Dockerfile
+          platforms: linux/amd64
+          load: true
+          provenance: false
+          sbom: false
+          tags: ${{ env.IMAGE_REF }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=devorecruiter-api-back
+
+      - name: Scan release image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{ env.IMAGE_REF }}
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
+      - name: Push release image
+        run: docker push "$IMAGE_REF"
+
+      - name: Verify published image
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE_DIGEST="$(docker buildx imagetools inspect "$IMAGE_REF" | awk '/Digest:/ {print $2; exit}')"
+          RAW_MANIFEST="$(docker buildx imagetools inspect --raw "$IMAGE_REF")"
+          IMAGE_SIZE="$(printf '%s' "$RAW_MANIFEST" | python3 -c "import json, sys; manifest = json.load(sys.stdin); print(manifest.get('config', {}).get('size', 0) + sum(layer.get('size', 0) for layer in manifest.get('layers', [])))")"
+          {
+            echo "Image: $IMAGE_REF"
+            echo "Digest: $IMAGE_DIGEST"
+            echo "Platform: $IMAGE_PLATFORM"
+            echo "Size: ${IMAGE_SIZE} bytes"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  n8n-validation:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.n8n == 'true' || needs.detect-changes.outputs.all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Validate workflow JSON exports
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("automation/n8n")
+          files = sorted(root.glob("*.json"))
+          if not files:
+              raise SystemExit("No n8n workflow exports were found")
+
+          for path in files:
+              with path.open("r", encoding="utf-8") as handle:
+                  json.load(handle)
+              print(f"validated {path.name}")
+          PY
+
+  terraform-validation:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.terraform == 'true' || needs.detect-changes.outputs.all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Validate Terraform source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! find infrastructure/terraform -type f \( -name '*.tf' -o -name '.terraform.lock.hcl' \) | grep -q .; then
+            echo "No Terraform source was imported yet." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          terraform -chdir=infrastructure/terraform fmt -check -recursive
+          terraform -chdir=infrastructure/terraform init -backend=false
+          terraform -chdir=infrastructure/terraform validate

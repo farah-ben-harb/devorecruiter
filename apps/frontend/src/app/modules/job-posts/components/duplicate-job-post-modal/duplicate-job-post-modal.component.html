@@ -1,0 +1,184 @@
+<div class="fixed inset-0 z-9999 flex items-center justify-center bg-black/30 px-4">
+  <div
+    class="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-5 sm:p-6"
+  >
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center gap-2">
+        <div
+          class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4 text-red-500"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
+            <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
+          </svg>
+        </div>
+        <h3 class="text-base sm:text-lg font-semibold text-gray-800 dark:text-white">
+          Dupliquer la fiche de poste
+        </h3>
+      </div>
+      <button
+        (click)="onClose()"
+        class="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="w-4 h-4"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Info -->
+    <div
+      class="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800"
+    >
+      <p class="text-xs text-red-600 dark:text-red-400">
+        Une nouvelle fiche sera créée avec les mêmes fichiers Drive. Modifiez les champs ci-dessous
+        avant de dupliquer.
+      </p>
+    </div>
+
+    <!-- Champs -->
+    <div class="flex flex-col gap-4">
+      <!-- Titre -->
+      <div>
+        <label
+          for="duplicate-title"
+          class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1"
+        >
+          Titre du poste
+        </label>
+        <input
+          id="duplicate-title"
+          type="text"
+          [value]="title()"
+          (input)="title.set($any($event.target).value)"
+          placeholder="Ex: Développeur Backend Senior"
+          class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition"
+        />
+      </div>
+
+      <!-- Client -->
+      <div>
+        <label
+          for="duplicate-company"
+          class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1"
+        >
+          Client
+        </label>
+        <input
+          id="duplicate-company"
+          type="text"
+          [value]="company()"
+          (input)="company.set($any($event.target).value)"
+          placeholder="Ex: Société Générale"
+          class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition"
+        />
+      </div>
+
+      <!-- Type d'évaluation -->
+      <div>
+        <label
+          for="duplicate-qcm"
+          class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2"
+        >
+          Type d'évaluation
+        </label>
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input
+              id="duplicate-qcm"
+              type="checkbox"
+              [checked]="hasQcm()"
+              (change)="hasQcm.set($any($event.target).checked)"
+              class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <span class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+              <span
+                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700"
+              >
+                QCM
+              </span>
+              Évaluation par questionnaire
+            </span>
+          </label>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              [checked]="requiresCoding()"
+              (change)="requiresCoding.set($any($event.target).checked)"
+              class="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+            />
+            <span class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+              <span
+                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700"
+              >
+                Codage
+              </span>
+              Évaluation technique avec code
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
+      <button
+        (click)="onClose()"
+        class="w-full sm:w-auto px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+      >
+        Annuler
+      </button>
+      <button
+        (click)="onConfirm()"
+        [disabled]="saving"
+        class="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+      >
+        @if (saving) {
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4 animate-spin"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+          </svg>
+          Duplication...
+        } @else {
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
+            <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
+          </svg>
+          Dupliquer
+        }
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,269 @@
+<div
+  class="fixed inset-0 z-100000 flex items-center justify-center p-2 sm:p-4 bg-black/40 backdrop-blur-sm"
+>
+  <div
+    class="relative z-10 w-full max-w-4xl bg-white rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 animate-modal max-h-[90vh] flex flex-col"
+  >
+    <!-- Header -->
+    <div
+      class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700"
+    >
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+          <app-icon name="clock" />
+        </div>
+        <div>
+          <h4 class="font-semibold text-gray-800 dark:text-white text-sm">
+            Historique des invitations
+          </h4>
+          <p class="text-xs text-gray-400">{{ candidateName }}</p>
+        </div>
+      </div>
+      <button
+        (click)="close()"
+        class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-400"
+      >
+        ✕
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="px-3 sm:px-6 py-4 sm:py-5 flex-1 overflow-y-auto">
+      @if (loading()) {
+        <div class="flex flex-col items-center py-10">
+          <div
+            class="animate-spin rounded-full h-8 w-8 border-4 border-blue-200 border-t-blue-600"
+          ></div>
+          <p class="text-xs text-gray-400 mt-3">Chargement...</p>
+        </div>
+      }
+
+      @if (!loading() && invitations().length === 0) {
+        <div class="flex flex-col items-center py-10 text-center">
+          <div class="text-3xl mb-2">📭</div>
+          <p class="text-sm italic text-gray-400">
+            Aucune invitation envoyée à ce candidat pour cette évaluation.
+          </p>
+        </div>
+      }
+
+      @if (!loading() && invitations().length > 0) {
+        <div class="overflow-x-auto -mx-6 px-6">
+          <table class="w-full text-sm" [class]="isQuizEvaluation() ? 'min-w-150' : 'min-w-175'">
+            <thead>
+              <tr
+                class="text-[10px] uppercase font-bold text-gray-400 border-b border-gray-100 dark:border-gray-700"
+              >
+                <th class="py-2 text-left">Évaluation</th>
+                <th class="py-2 text-center">Envoyée le</th>
+                <th class="py-2 text-center">Échéance</th>
+                <th class="py-2 text-center">Statut</th>
+                @if (!isQuizEvaluation()) {
+                  <th class="py-2 text-center">Repo</th>
+                }
+                <th class="py-2 text-center">Score</th>
+                @if (canDelete) {
+                  <th class="py-2 text-center">Action</th>
+                }
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
+              @for (inv of invitations(); track inv.id) {
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <!-- Évaluation -->
+                  <td class="py-3 pr-3">
+                    <p class="font-medium text-gray-700 dark:text-gray-200 text-xs">
+                      {{ getEvaluationTitle(inv.evaluationId) }}
+                    </p>
+                  </td>
+
+                  <!-- Envoyée le -->
+                  <td class="py-3 text-center text-xs text-gray-500">
+                    {{ inv.sentAt | date: 'dd/MM/yyyy' }}
+                  </td>
+
+                  <!-- Échéance -->
+                  <td class="py-3 text-center text-xs text-gray-500">
+                    {{ inv.dueDate | date: 'dd/MM/yyyy' }}
+                  </td>
+
+                  <!-- Statut -->
+                  <td class="py-3 text-center">
+                    @if (isExpired(inv.dueDate)) {
+                      <span
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700"
+                      >
+                        ✕ Expirée
+                      </span>
+                    } @else {
+                      <span
+                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-700"
+                      >
+                        ● En cours
+                      </span>
+                    }
+                  </td>
+
+                  <!-- Repo Git (coding uniquement) -->
+                  @if (!isQuizEvaluation()) {
+                    <td class="py-3 text-center">
+                      @if (canViewGitRepo && inv.gitRepoUrl) {
+                        <a
+                          [href]="inv.gitRepoUrl"
+                          target="_blank"
+                          class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition border border-indigo-200"
+                        >
+                          <app-icon name="gitBranch" class="w-3 h-3" />
+                          Voir
+                        </a>
+                      } @else {
+                        <span class="text-xs text-gray-300">—</span>
+                      }
+                    </td>
+                  }
+
+                  <!-- Score -->
+                  <td class="py-3 text-center">
+                    @if (isQuizEvaluation()) {
+                      @if (quizResults.get(inv.id); as qResult) {
+                        <button
+                          (click)="openQuizResult.emit(inv.id)"
+                          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition hover:shadow-sm"
+                          [class]="
+                            qResult.scorePercent >= 70
+                              ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                              : qResult.scorePercent >= 40
+                                ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                          "
+                        >
+                          📝 {{ qResult.scorePercent }}%
+                          <span class="text-gray-400 font-normal text-[10px]">
+                            {{ qResult.correctAnswers }}/{{ qResult.totalQuestions }}
+                          </span>
+                        </button>
+                      } @else {
+                        @if (inv.quizToken) {
+                          <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-200"
+                          >
+                            ⏳ En attente
+                          </span>
+                        } @else {
+                          <span class="text-xs text-gray-300 italic">—</span>
+                        }
+                      }
+                    } @else {
+                      @if (evaluatingInvitationId === inv.id) {
+                        <div class="flex justify-center">
+                          <div
+                            class="animate-spin rounded-full h-5 w-5 border-2 border-indigo-300 border-t-indigo-600"
+                          ></div>
+                        </div>
+                      } @else if (codeEvaluations.get(inv.id); as result) {
+                        <button
+                          (click)="openCodeEval.emit(inv.id)"
+                          class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition hover:shadow-sm"
+                          [class]="
+                            result.globalScore >= 70
+                              ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                              : result.globalScore >= 40
+                                ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                          "
+                        >
+                          {{ result.globalScore }}/100
+                        </button>
+                      } @else if (inv.gitRepoUrl) {
+                        <button
+                          (click)="evaluate.emit(inv.id)"
+                          class="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium bg-violet-50 text-violet-600 hover:bg-violet-100 transition border border-violet-200"
+                        >
+                          🤖 Évaluer
+                        </button>
+                      } @else {
+                        <span class="text-xs text-gray-300 italic">Pas de repo</span>
+                      }
+                    }
+                  </td>
+
+                  <!-- Action menu -->
+                  @if (canDelete) {
+                    <td class="py-3 text-center relative">
+                      <button
+                        (click)="toggleActionMenu(inv.id, $event)"
+                        class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 transition"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="w-5 h-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          stroke-width="3"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M12 5v.01M12 12v.01M12 19v.01"
+                          />
+                        </svg>
+                      </button>
+
+                      @if (openActionMenuId() === inv.id) {
+                        <div
+                          class="absolute right-0 mt-1 w-44 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-50"
+                          role="presentation"
+                          (click)="$event.stopPropagation()"
+                        >
+                          @if (isExpired(inv.dueDate)) {
+                            <button
+                              (click)="deleteInvitation(inv.id)"
+                              class="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                              Supprimer l'invitation
+                            </button>
+                          } @else {
+                            <div class="px-4 py-2.5 text-xs text-gray-400 italic">
+                              Suppression possible uniquement après expiration
+                            </div>
+                          }
+                        </div>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <!-- Footer -->
+    <div
+      class="flex justify-end px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-100 dark:border-gray-700"
+    >
+      <button
+        (click)="close()"
+        class="px-4 py-2 rounded-lg text-sm text-gray-600 border border-gray-200 hover:bg-gray-50 transition"
+      >
+        Fermer
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,25 @@
+<div
+  class="h-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 shadow-sm flex flex-col"
+>
+  <h2 class="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-tight mb-3">
+    Statuts des évaluations
+  </h2>
+  @if (series().some(v => v > 0)) {
+    <div class="flex-1 flex items-center justify-center">
+      <apx-chart
+        class="w-full"
+        [series]="series()"
+        [chart]="chart"
+        [labels]="labels"
+        [legend]="legend"
+        [plotOptions]="plotOptions"
+        [colors]="colors"
+        [dataLabels]="dataLabels"
+      />
+    </div>
+  } @else {
+    <div class="flex-1 flex items-center justify-center text-gray-300 italic text-sm">
+      Aucune donnée
+    </div>
+  }
+</div>

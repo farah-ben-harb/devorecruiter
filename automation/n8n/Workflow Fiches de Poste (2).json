@@ -1,0 +1,1168 @@
+{
+  "name": "Workflow Fiches de Poste",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.body.googleDriveFileId }}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "application/pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1040,
+        -128
+      ],
+      "id": "96a3645a-bc36-4655-a42e-91210b6ec222",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDriveOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "21f2db97-f87d-442c-a458-227bec5ff612",
+              "leftValue": "={{ $binary.data.mimeType }}",
+              "rightValue": "=image/",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -720,
+        -128
+      ],
+      "id": "ce516005-04d5-4502-8d5e-6d06f6f35fa1",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "text": "Cette image contient une fiche de poste.\n\nLis tout le texte présent dans l’image et transforme les informations en JSON avec cette structure exacte :\n\n{\n\"intitule_poste\": \"Titre exact du poste\",\n\"departement\": \"Équipe ou division mentionnée dans la fiche\",\n\"entreprise\": \"Nom de l'entreprise cliente\",\n\"presentation_entreprise\": \"Résumé de la présentation de l'entreprise (maximum 3 lignes)\",\n\"contexte_poste\": \"Résumé du contexte ou environnement du poste (maximum 3 lignes)\",\n\"type_contrat\": \"Type de contrat (si absent, déduire depuis le contexte : mission freelance, CDI, etc.)\",\n\"localisation\": \"Valeur du champ Localisation dans la fiche\",\n\"date_demarrage\": \"Date de démarrage souhaitée\",\n\"date_prise_poste\": \"Date de prise de poste souhaitée généralement proche de la référence\",\n\"charge_journaliere\": \"Charge prévisionnelle annuelle en jours\",\n\"dominante\": \"Dominante technique mentionnée (Back, Front, Full, Data, etc.)\",\n\"niveau_experience\": \"Niveau de complexité ou années d'expérience requis\",\n\"missions\": \"Résumé des missions principales (maximum 3 lignes)\",\n\"competences_techniques\": [\"liste\", \"des\", \"technologies\", \"et\", \"outils\", \"mentionnés\"],\n\"competences_transverses\": [\"liste\", \"des\", \"soft skills\", \"et\", \"méthodes\", \"mentionnées\"],\n\"competences_comportementales\": [\"liste\", \"des\", \"compétences\", \"comportementales\", \"mentionnées\"],\n\"experience\": \"Nombre d'années et domaine d'expérience requis\",\n\"formation\": \"Niveau de diplôme et spécialisation requis\",\n\"contraintes\": \"Contraintes techniques mentionnées (maximum 3 lignes)\",\n\"test_technique\": \"Nom du fichier ou type de test mentionné\",\n\"materiel_requis\": \"Spécifications matérielles demandées au consultant (maximum 3 lignes)\",\n\"ref_fiche\": \"Référence de la fiche (ex: SF-1015)\",\n\"certifications_requises\": \"Certifications, licences ou accréditations requises (ex: AWS, Kubernetes, etc.)\"\n}\n\nRègles importantes :\n\nLes champs descriptifs doivent être résumés avec les limites suivantes :\n\nmaximum 3 lignes pour presentation_entreprise, contexte_poste, missions et materiel_requis\nmaximum 3 lignes pour contraintes\nLes listes doivent être retournées sous forme de tableaux JSON.\nSi une information est absente du document, déduis-la intelligemment depuis le contexte de la fiche.\nRetourne uniquement le JSON valide.\nNe retourne aucun texte, aucune explication et aucun markdown.",
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        272,
+        -304
+      ],
+      "id": "282beef8-b95b-4db7-92a0-81c7fe890c7a",
+      "name": "Analyze an image",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googlePalmApi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{$node[\"Copy file\"].json[\"id\"]}}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "replaceAll",
+              "text": "INTITULE_POSTE",
+              "replaceText": "={{ $json.intitule_poste }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "=departement",
+              "replaceText": "={{ $('Json Gemini').item.json.departement }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "=entreprise",
+              "replaceText": "={{ $('Json Gemini').item.json.entreprise }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "=missions_principales",
+              "replaceText": "={{ $json.missions }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "=experience",
+              "replaceText": "={{ $('Json Gemini').item.json.experience }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "formation",
+              "replaceText": "={{ $('Json Gemini').item.json.formation }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "=date_demarrage",
+              "replaceText": "={{ $json.date_demarrage }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "charge_journaliere",
+              "replaceText": "={{ $json.charge_journaliere }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "dominante",
+              "replaceText": "={{ $json.dominante }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "experience",
+              "replaceText": "={{ $json.experience }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "competences_techniques",
+              "replaceText": "={{ $json.competences_techniques }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "missions",
+              "replaceText": "={{ $json.missions }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "competences_transverses",
+              "replaceText": "={{ $json.competences_transverses }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "contraintss",
+              "replaceText": "={{ $json.contraintss }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "test_technique",
+              "replaceText": "={{ $json.test_technique }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "materiel_requis",
+              "replaceText": "={{ $json.materiel_requis }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "ref_fiche",
+              "replaceText": "={{ $json.ref_fiche }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "presentation_entrep",
+              "replaceText": "={{ $json.presentation_entrep }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "date_prise_poste",
+              "replaceText": "={{ $json.date_prise_poste }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "competences_comportementales",
+              "replaceText": "={{ $json.competences_comportementales }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "contexte_poste",
+              "replaceText": "={{ $json.contexte_poste }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "certifications_requises",
+              "replaceText": "={{ $json.certifications_requises }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        -48
+      ],
+      "id": "700875a3-7a14-4c07-a673-f8d01d10b0f6",
+      "name": "Update a document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDocsOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1536,
+        -48
+      ],
+      "id": "9638b56d-b2e2-4344-9672-c12253c167cd",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "copy",
+        "fileId": {
+          "__rl": true,
+          "value": "1ET7Vi9hzRBImH95RIKtGdOkoU0zYe4tWG_qUHxXDl0w",
+          "mode": "list",
+          "cachedResultName": "template_fiche_poste",
+        },
+        "name": "={{ $('Download file').item.binary.data.fileName.replace(/\\.[^.]+$/, '') }}",
+        "sameFolder": false,
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "19sV9StHnR3Hn4cEfbxIKYfzh3hA7ZC_O",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1760,
+        -48
+      ],
+      "id": "5996b862-cd3b-41c8-b260-83a921983619",
+      "name": "Copy file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDriveOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const file = $json;\nconst gemini = $('Json Gemini').item.json;\n\nreturn [\n  {\n    json: {\n      document_id: file.id,\n      document_name: file.name,\n      document_url: file.webViewLink || \"\",\n\n      intitule_poste: gemini.intitule_poste || \"\",\n      departement: gemini.departement || \"\",\n      entreprise: gemini.entreprise || \"\",\n      presentation_entreprise: gemini.presentation_entreprise || \"\",\n      contexte_poste: gemini.contexte_poste || \"\",\n      type_contrat: gemini.type_contrat || \"\",\n      localisation: gemini.localisation || \"\",\n      date_demarrage: gemini.date_demarrage || \"\",\n      date_prise_poste: gemini.date_prise_poste || \"\",\n      charge_journaliere: gemini.charge_journaliere || \"\",\n      dominante: gemini.dominante || \"\",\n      niveau_experience: gemini.niveau_experience || \"\",\n      missions: gemini.missions || \"\",\n      competences_techniques: Array.isArray(gemini.competences_techniques)\n        ? gemini.competences_techniques.join(\", \")\n        : gemini.competences_techniques || \"\",\n      competences_transverses: Array.isArray(gemini.competences_transverses)\n        ? gemini.competences_transverses.join(\", \")\n        : gemini.competences_transverses || \"\",\n      competences_comportementales: Array.isArray(gemini.competences_comportementales)\n        ? gemini.competences_comportementales.join(\", \")\n        : gemini.competences_comportementales || \"\",\n      experience: gemini.experience || \"\",\n      formation: gemini.formation || \"\",\n      contraintes: gemini.contraintes || \"\",\n      test_technique: gemini.test_technique || \"\",\n      materiel_requis: gemini.materiel_requis || \"\",\n      ref_fiche: gemini.ref_fiche || \"\",\n      certifications_requises: gemini.certifications_requises || \"\"\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        -48
+      ],
+      "id": "9c8b9716-4c6b-445f-b524-e694d991a0db",
+      "name": "Json Template"
+    },
+    {
+      "parameters": {
+        "jsCode": "let text = \"\";\n\nif ($json.content?.parts?.[0]?.text) {\n  text = $json.content.parts[0].text;\n} else if ($json.candidates?.[0]?.content?.parts?.[0]?.text) {\n  text = $json.candidates[0].content.parts[0].text;\n} else {\n  throw new Error(\"Structure Gemini inconnue : \" + JSON.stringify($json));\n}\n\n// Nettoyer le markdown et caractères problématiques\nconst cleaned = text\n  .replace(/```json/g, \"\")\n  .replace(/```/g, \"\")\n  .replace(/[\\u0000-\\u001F\\u007F]/g, \" \") // caractères de contrôle\n  .replace(/,\\s*}/g, \"}\")                  // virgule avant }\n  .replace(/,\\s*]/g, \"]\")                  // virgule avant ]\n  .trim();\n\n// Extraire uniquement le bloc JSON entre { }\nconst match = cleaned.match(/\\{[\\s\\S]*\\}/);\nif (!match) throw new Error(\"Aucun JSON trouvé dans la réponse : \" + cleaned);\n\nconst data = JSON.parse(match[0]);\n\nreturn [{ json: data }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        -48
+      ],
+      "id": "46959860-2287-4843-8941-c9ee484341cb",
+      "name": "Json Gemini"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f11733a1-1bf0-4e2f-8edc-b104b745cc2e",
+              "name": "intitule_poste",
+              "value": "={{ $json.intitule_poste }}",
+              "type": "string"
+            },
+            {
+              "id": "4bc20736-2e0c-4cce-b943-8c517e91f333",
+              "name": "departement",
+              "value": "={{ $json.departement }}",
+              "type": "string"
+            },
+            {
+              "id": "1181dba3-7e19-422c-afe8-508a0049989e",
+              "name": "entreprise",
+              "value": "={{ $json.entreprise }}",
+              "type": "string"
+            },
+            {
+              "id": "d8ca6a69-5fa4-473c-a39b-3321de7d648a",
+              "name": "date_demarrage",
+              "value": "={{ $json.date_demarrage }}",
+              "type": "string"
+            },
+            {
+              "id": "8abaef51-a9e0-4e43-8831-50ecb64da05f",
+              "name": "charge_journaliere",
+              "value": "={{ $json.charge_journaliere }}",
+              "type": "string"
+            },
+            {
+              "id": "07262592-fef6-4dbd-b8a6-e1fed5613f9c",
+              "name": "dominante",
+              "value": "={{ $json.dominante }}",
+              "type": "string"
+            },
+            {
+              "id": "6252677b-a82d-4459-944b-31272222d8c1",
+              "name": "formation",
+              "value": "={{ $json.formation }}",
+              "type": "string"
+            },
+            {
+              "id": "a5b38cb8-c829-4034-81b9-0396eac13923",
+              "name": "experience",
+              "value": "={{ $json.niveau_experience }}",
+              "type": "string"
+            },
+            {
+              "id": "00482254-24b1-4f3b-99e8-763622d33492",
+              "name": "competences_techniques",
+              "value": "={{ $json.competences_techniques }}",
+              "type": "string"
+            },
+            {
+              "id": "7f0385ff-7c13-41ec-b386-70fe62bed7d7",
+              "name": "missions",
+              "value": "={{ Array.isArray($json.missions) ? $json.missions.join(\"\\n• \") : (typeof $json.missions === 'string' && $json.missions.startsWith('[') ? JSON.parse($json.missions).join(\"\\n• \") : $json.missions) }}",
+              "type": "string"
+            },
+            {
+              "id": "74f79379-6b6c-4c3b-8984-fc5f86246883",
+              "name": "competences_transverses",
+              "value": "={{ $json.competences_transverses }}",
+              "type": "string"
+            },
+            {
+              "id": "b76b2f9a-b72e-402a-8ed9-e6298df735a4",
+              "name": "contraintss",
+              "value": "={{ $json.contraintes }}",
+              "type": "string"
+            },
+            {
+              "id": "2bf2759f-8225-4fb5-bd5a-ad2011ca1db3",
+              "name": "test_technique",
+              "value": "={{ $json.test_technique }}",
+              "type": "string"
+            },
+            {
+              "id": "9451d4e3-ffe5-42bb-a1a5-3f3d6124baf5",
+              "name": "materiel_requis",
+              "value": "={{ $json.materiel_requis }}",
+              "type": "string"
+            },
+            {
+              "id": "bb9e3806-4f9a-4049-9467-7bd03cffd43a",
+              "name": "ref_fiche",
+              "value": "={{ $json.ref_fiche }}",
+              "type": "string"
+            },
+            {
+              "id": "d56413f5-12ee-44af-a8a5-fb0cf71535d1",
+              "name": "presentation_entrep",
+              "value": "={{ $json.presentation_entreprise }}",
+              "type": "string"
+            },
+            {
+              "id": "5e93bdd8-9caf-4984-b7af-b5ce037da583",
+              "name": "contexte_poste",
+              "value": "={{ $json.contexte_poste }}",
+              "type": "string"
+            },
+            {
+              "id": "f4088f24-dd23-4720-bb00-7176ba5709c4",
+              "name": "competences_comportementales",
+              "value": "={{ $json.competences_comportementales }}",
+              "type": "string"
+            },
+            {
+              "id": "580e516b-1c70-4d6f-a3c6-2a001c034953",
+              "name": "date_prise_poste",
+              "value": "={{ $json.date_prise_poste }}",
+              "type": "string"
+            },
+            {
+              "id": "46cb157e-ca7b-4d3d-bfc2-ae1ec879626b",
+              "name": "certifications_requises",
+              "value": "={{ $json.certifications_requises }}\"",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2256,
+        -48
+      ],
+      "id": "71d1faad-a6aa-4845-b2cd-3cf0f5e5f001",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2307584b-6ff8-41de-9466-252afc4c15e1",
+              "leftValue": "={{ $binary.data.mimeType }}",
+              "rightValue": "wordprocessingml",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -400,
+        0
+      ],
+      "id": "4cd83616-e264-41a6-bc80-662608499598",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1040,
+        -64
+      ],
+      "id": "ffb8df94-98cb-4337-83e9-8f311038acae",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $env.GOOGLE_GEMINI_API_KEY }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        656,
+        -64
+      ],
+      "id": "8b1c4fdc-cc5a-4b69-91fc-ac04e313e938",
+      "name": "HTTP Request4"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://v2.convertapi.com/convert/docx/to/pdf?Token=' + $env.CONVERTAPI_SECRET }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "Token",
+              "value": "={{ $env.CONVERTAPI_SECRET }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/octet-stream"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"Parameters\": [\n    {\n      \"Name\": \"File\",\n      \"FileValue\": {\n        \"Name\": \"{{ $json.fileName }}\",\n        \"Data\": \"{{ $json.fileBase64 }}\"\n      }\n    }\n  ]\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        160,
+        -64
+      ],
+      "id": "acd70d67-45e7-4614-bc91-b7216cf426fc",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\n\n// Récupérer le buffer binaire\nconst binaryBuffer = await this.helpers.getBinaryDataBuffer(0, 'data');\n\n// Convertir en base64\nconst base64String = binaryBuffer.toString('base64');\n\nreturn [{\n  json: {\n    fileName: item.binary.data.fileName,\n    mimeType: item.binary.data.mimeType,\n    fileBase64: base64String\n  },\n  binary: item.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        -64
+      ],
+      "id": "c5096e7c-3419-4d62-abf1-0c9f3bb79523",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst binaryBuffer = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst base64String = binaryBuffer.toString('base64');\n\nreturn [{\n  json: {\n    body: JSON.stringify({\n      contents: [\n        {\n          parts: [\n            {\n              inline_data: {\n                mime_type: \"application/pdf\",\n                data: base64String\n              }\n            },\n            {\n              text: `Analyse ce document qui contient une fiche de poste.\n\nLis tout le contenu du document et extrais les informations importantes.\n\nRetourne UNIQUEMENT un JSON valide, sans texte avant ou après, avec la structure suivante :\n\n{\n  \"intitule_poste\": \"Titre exact du poste\",\n  \"departement\": \"Équipe ou division mentionnée dans la fiche\",\n  \"entreprise\": \"Nom de l'entreprise cliente\",\n  \"presentation_entreprise\": \"Résumé de la présentation de l'entreprise (maximum 3 lignes)\",\n  \"contexte_poste\": \"Résumé du contexte ou environnement du poste (maximum 3 lignes)\",\n  \"type_contrat\": \"Type de contrat (si absent, déduire depuis le contexte : mission freelance, CDI, etc.)\",\n  \"localisation\": \"Valeur du champ Localisation dans la fiche\",\n  \"date_demarrage\": \"Date de démarrage souhaitée\",\n  \"date_prise_poste\": \"Date explicite de prise de poste généralement proche de la reference si elle existe dans le document. Si aucune date différente de 'date_demarrage' n’est trouvée, retourner une chaîne vide \\\"\\\"\",\n  \"charge_journaliere\": \"Charge prévisionnelle annuelle en jours\",\n  \"dominante\": \"Dominante technique mentionnée (Back, Front, Full, Data, etc.)\",\n  \"niveau_experience\": \"Niveau de complexité ou années d'expérience requis\",\n  \"missions\": \"Résumé des missions principales (maximum 3 lignes)\",\n  \"competences_techniques\": [\"liste\", \"des\", \"technologies\", \"et\", \"outils\", \"mentionnés\"],\n  \"competences_transverses\": [\"liste\", \"des\", \"méthodes\", \"soft skills\", \"ou\", \"outils\", \"mentionnés\"],\n  \"competences_comportementales\": [\"liste\", \"des\", \"compétences\", \"comportementales\", \"mentionnées\"],\n  \"experience\": \"Nombre d'années et domaine d'expérience requis\",\n  \"formation\": \"Niveau de diplôme et spécialisation requis\",\n  \"contraintes\": \"Contraintes techniques ou normes mentionnées (maximum 3 lignes)\",\n  \"test_technique\": \"Nom du fichier ou type de test mentionné\",\n  \"materiel_requis\": \"Spécifications matérielles demandées au consultant (maximum 3 lignes)\",\n  \"ref_fiche\": \"Référence de la fiche (ex: SF-1015)\",\n  \"certifications_requises\": \"Certifications, licences ou accréditations requises (ex: AWS, Kubernetes, etc.)\"\n}\n\nRègles importantes :\n- Les champs descriptifs doivent être résumés :\n  - maximum 3 lignes pour presentation_entreprise, contexte_poste, missions et materiel_requis\n  - maximum 3 lignes pour contraintes\n- Les compétences doivent être retournées sous forme de tableaux JSON.\n- Si une information est absente du document, déduis-la intelligemment depuis le contexte.\n- Conserve les termes techniques exacts mentionnés dans la fiche.\n- Retourne uniquement le JSON valide.\n- Ne retourne aucun texte, aucune explication et aucun markdown.`\n            }\n          ]\n        }\n      ]\n    })\n  },\n  binary: item.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        -64
+      ],
+      "id": "d7dc7674-20af-40ef-ae9e-ab3ff9ee7a43",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "text": "Analyse ce document qui contient une fiche de poste.\n\nExtrais les informations importantes et retourne-les UNIQUEMENT au format JSON valide, sans aucun texte avant ou après, avec les champs suivants :\n\n{\n  \"intitule_poste\": \"Titre exact du poste\",\n  \"departement\": \"Équipe ou division mentionnée dans la fiche\",\n  \"entreprise\": \"Nom de l'entreprise cliente\",\n  \"presentation_entreprise\": \"Résumé de la présentation de l'entreprise (maximum 3 lignes)\",\n  \"contexte_poste\": \"Résumé du contexte ou environnement du poste (maximum 3 lignes)\",\n  \"type_contrat\": \"Type de contrat (si absent, déduire depuis le contexte : mission freelance, CDI, etc.)\",\n  \"localisation\": \"Valeur du champ Localisation dans la fiche\",\n  \"date_demarrage\": \"Date de démarrage souhaitée\",\n\n  \"charge_journaliere\": \"Charge prévisionnelle annuelle en jours\",\n  \"dominante\": \"Dominante technique mentionnée (Back, Front, Full, Data, etc.)\",\n  \"niveau_experience\": \"Niveau de complexité ou années d'expérience requis\",\n  \"missions\": \"Résumé des missions principales (maximum 3 lignes)\",\n  \"competences_techniques\": [\"liste\", \"des\", \"technologies\", \"et\", \"outils\", \"mentionnés\"],\n  \"competences_transverses\": [\"liste\", \"des\", \"soft skills\", \"et\", \"méthodes\", \"mentionnées\"],\n  \"competences_comportementales\": [\"liste\", \"des\", \"compétences\", \"comportementales\", \"mentionnées\"],\n  \"experience\": \"Nombre d'années et domaine d'expérience requis\",\n  \"formation\": \"Niveau de diplôme et spécialisation requis\",\n  \"contraintes\": \"Contraintes techniques mentionnées (maximum 3 lignes)\",\n  \"test_technique\": \"Nom du fichier ou type de test mentionné\",\n  \"materiel_requis\": \"Spécifications matérielles demandées au consultant (maximum 3 lignes)\",\n  \"ref_fiche\": \"Référence de la fiche (ex: SF-1015)\",\n\"certifications_requises\": \"Certifications, licences ou accréditations requises (ex: AWS, Kubernetes, etc.)\",\n  \"date_prise_poste\": \"Date explicite de prise de poste généralement proche de la reference si elle existe dans le document. Si aucune date différente de 'date_demarrage' n’est trouvée, retourner une chaîne vide \\\"\\\"\"\n}\n\nRègles importantes :\n- Les champs descriptifs longs doivent être résumés en **maximum 4 lignes**.\n- Si une information est absente du document, déduis-la intelligemment depuis le contexte de la fiche.\n- Les listes doivent être retournées sous forme de tableaux JSON.\n- Retourne uniquement le JSON valide.\n- Ne retourne aucun texte, aucune explication et aucun markdown.",
+        "inputType": "binary",
+        "simplify": false,
+        "options": {
+          "maxOutputTokens": 8192
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        272
+      ],
+      "id": "78f61f97-4acc-4153-9d1f-fd5cfb3e52a8",
+      "name": "Analyze document(PDF/TEXT)",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googlePalmApi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "upload_post",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1376,
+        -128
+      ],
+      "id": "66c77414-5792-4ff1-90a9-40d0dfd40882",
+      "name": "Webhook",
+      "webhookId": "${WEBHOOK_ID}"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"document_id\": \"{{ $json.document_id }}\",\n  \"document_name\": \"{{ $('Copy file').item.json.name }}\",\n  \"document_url\": \"{{ $('Json Template').item.json.document_url }}\",\n  \"entreprise\": \"{{ $json.entreprise }}\",\n  \"date_demarrage\": \"{{ $json.date_demarrage }}\",\n  \"intitule_poste\": \"{{ $json.intitule_poste }}\",\n  \"requires_coding\": {{ $json.requires_coding }},\n  \"docx_id\": \"{{ $('Copy file').item.json.id }}\",\n\"job_post_criteria\": {{ JSON.stringify($json.job_post_criteria) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        4192,
+        -32
+      ],
+      "id": "207daead-4bf9-4aca-a7c1-18981a3a8852",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Récupérer l'ID du fichier uploadé\nconst documentId = $('Upload file').item.json.id;\nconst documentName = $('Upload file').item.json.name;\nconst documentUrl = $('Upload file').item.json.webViewLink;\n\n// Récupérer les données du template\nconst templateData = $('Json Template').item.json;\nconst requires_coding = $('Code in JavaScript3').item.json.requires_coding ?? false;\n\nreturn [{\n  json: {\n    // Informations du document (UPLOAD maintenant)\n    document_id: documentId,\n    document_name: documentName,\n    document_url: documentUrl,\n    download_url: $('Upload file').item.json.webContentLink,\n    \n    // Conserver toutes les données du template\n    intitule_poste: templateData.intitule_poste,\n    departement: templateData.departement,\n    entreprise: templateData.entreprise,\n    presentation_entreprise: templateData.presentation_entreprise,\n    contexte_poste: templateData.contexte_poste,\n    type_contrat: templateData.type_contrat,\n    localisation: templateData.localisation,\n    date_demarrage: templateData.date_demarrage,\n    date_prise_poste: templateData.date_prise_poste,\n    charge_journaliere: templateData.charge_journaliere,\n    dominante: templateData.dominante,\n    niveau_experience: templateData.niveau_experience,\n    missions: templateData.missions,\n    competences_techniques: templateData.competences_techniques,\n    competences_transverses: templateData.competences_transverses,\n    competences_comportementales: templateData.competences_comportementales,\n    experience: templateData.experience,\n    formation: templateData.formation,\n    contraintss: templateData.contraintes,\n    test_technique: templateData.test_technique,\n    materiel_requis: templateData.materiel_requis,\n    ref_fiche: templateData.ref_fiche,\n    requires_coding: requires_coding,\n    certifications_requises: templateData.certifications_requises,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3456,
+        -48
+      ],
+      "id": "7ac8c38b-9b62-458a-8839-bf442c3a3627",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $node[\"Copy file\"].json[\"id\"] }}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "application/pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3024,
+        -48
+      ],
+      "id": "a3c82117-def4-4bba-9600-27938c08331e",
+      "name": "Download file1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDriveOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "={{ $node[\"Copy file\"].json[\"name\"] + \".pdf\" }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "${GOOGLE_DRIVE_FOLDER_URL}"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1ib3QBeIjYieAvSs_LwDSDd47hNyc6Yao",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3264,
+        -48
+      ],
+      "id": "bf3dece2-cd52-41b2-acc7-fe5b8862cc93",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDriveOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const openRouterApiKey = process.env.OPENROUTER_API_KEY;\nif (!openRouterApiKey) {\n  throw new Error('Missing OPENROUTER_API_KEY in n8n environment');\n}\n\nconst competences = $json.competences_techniques || \"\";\nconst intitule = $json.intitule_poste || \"\";\nconst domaine = $json.dominante || \"\";\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST',\n  url: 'https://openrouter.ai/api/v1/chat/completions',\n  headers: {\n    'Content-Type': 'application/json',\n    Authorization: `Bearer ${openRouterApiKey}`\n  },\n  body: JSON.stringify({\n    model: 'nvidia/nemotron-3-super-120b-a12b:free',\n    messages: [{\n      role: 'user',\n      content: `Tu es un expert RH et technique. Analyse ce poste et réponds UNIQUEMENT par true ou false, sans rien d'autre.\n\nRègle : retourne true si le poste nécessite d'écrire, lire ou analyser du code (développeur, data engineer, DevOps, data scientist, ML engineer...). Retourne false pour tout autre poste (finance, RH, marketing, juridique, commercial, management...).\n\nIntitulé du poste : ${intitule}\nDominante : ${domaine}\nCompétences techniques : ${competences}\n\nRéponse (true ou false uniquement) :`\n    }]\n  })\n});\n\nconst raw = response.choices[0].message.content.trim().toLowerCase();\nconst requires_coding = raw === \"true\";\n\nreturn [{\n  json: {\n    ...$json,\n    requires_coding\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2528,
+        -48
+      ],
+      "id": "36a0542f-5359-4886-8cb9-56b542216f7a",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.OPENROUTER_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2832,
+        192
+      ],
+      "id": "d9a709a6-a80f-4de7-b744-856a7f8a4c37",
+      "name": "LLM extract fiche"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.choices?.[0]?.message?.content ?? \"\";\nconst cleaned = raw.replace(/```json|```/g, '').trim();\nconst parsed = JSON.parse(cleaned);\n\nreturn [{ json: { job_post_criteria: parsed } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        192
+      ],
+      "id": "d58bc515-a43f-4142-ba19-ba83c90d5599",
+      "name": "Code JS (parse fiche)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Nœud: \"Extract Criteria\"\n// Branché depuis: Edit Fields (en parallèle de Code in JavaScript3)\n\nconst gemini = $('Json Gemini').item.json;\n\nconst body = JSON.stringify({\n  model: \"openai/gpt-4o-mini\",\n  messages: [{\n    role: \"user\",\n    content: `Tu es un expert RH. À partir de ces données extraites d'une fiche de poste, retourne UNIQUEMENT ce JSON sans texte avant ou après :\n{\n  \"intitulePoste\": \"...\",\n  \"competencesTechniquesRequises\": [\"...\"],\n  \"competencesGeneralesRequises\": [\"...\"],\n  \"experienceMinimaleAnnees\": 0,\n  \"formationRequise\": \"...\",\n  \"languesRequises\": [\"...\"],\n  \"missionsprincipales\": [\"...\"],\n  \"certificationsRequises\": [\"...\"]\n}\n\nDONNÉES DE LA FICHE:\n- Intitulé: ${gemini.intitule_poste || \"\"}\n- Compétences techniques: ${JSON.stringify(gemini.competences_techniques || [])}\n- Compétences transverses: ${JSON.stringify(gemini.competences_transverses || [])}\n- Compétences comportementales: ${JSON.stringify(gemini.competences_comportementales || [])}\n- Expérience: ${gemini.experience || \"\"} \n- Niveau expérience: ${gemini.niveau_experience || \"\"}\n- Formation: ${gemini.formation || \"\"}\n- Missions: ${gemini.missions || \"\"}\n- Dominante: ${gemini.dominante || \"\"}\n- Certifications: ${gemini.certifications_requises || \"\"}`\n  }]\n});\n\nreturn [{ json: { body } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2528,
+        192
+      ],
+      "id": "8770c6ed-e2ca-4fa0-b204-c119929791e7",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3760,
+        -32
+      ],
+      "id": "777fe74b-4870-4a23-8ac4-1dd46ff97e14",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const unification = $('Code in JavaScript2').item.json;\nconst criteria = $('Code JS (parse fiche)').item.json.job_post_criteria ?? {};\n\nreturn [{\n  json: {\n    ...unification,\n    job_post_criteria: criteria\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3984,
+        -32
+      ],
+      "id": "fb8179db-4e86-4a84-a1d6-37bb53692e1a",
+      "name": "Code in JavaScript5"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Analyze an image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze an image": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Copy file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Copy file": {
+      "main": [
+        [
+          {
+            "node": "Json Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Json Template": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Json Gemini": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Analyze document(PDF/TEXT)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Json Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request4": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze document(PDF/TEXT)": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a document": {
+      "main": [
+        [
+          {
+            "node": "Download file1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file1": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Update a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM extract fiche": {
+      "main": [
+        [
+          {
+            "node": "Code JS (parse fiche)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "LLM extract fiche",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code JS (parse fiche)": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript5": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "bf70f5ea-711f-4577-9b68-db1ff4452d39",
+  "meta": {
+    "note": "Sanitized metadata"
+  },
+  "id": "1OUkFM7pkg1ohwAn",
+  "tags": [
+    {
+      "updatedAt": "2026-04-08T15:05:33.084Z",
+      "createdAt": "2026-04-08T15:05:33.084Z",
+      "id": "HEAsVmPtvZNq0Xay",
+      "name": "RH"
+    },
+    {
+      "updatedAt": "2026-04-08T15:05:33.076Z",
+      "createdAt": "2026-04-08T15:05:33.076Z",
+      "id": "xfEx8wNhod71Td4g",
+      "name": "Automation"
+    }
+  ]
+}

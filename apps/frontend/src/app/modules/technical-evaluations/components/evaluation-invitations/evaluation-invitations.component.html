@@ -1,0 +1,530 @@
+@if (showListModal()) {
+  <div
+    class="fixed inset-0 z-100000 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+  >
+    <div
+      class="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]"
+    >
+      <!-- ── Header ── -->
+      <div
+        class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="w-10 h-10 flex items-center justify-center rounded-lg bg-red-100 text-red-600"
+          >
+            <app-icon name="send" />
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-800 dark:text-white">
+              Invitations — {{ jobPostName }}
+            </h3>
+            <p class="text-xs text-gray-500">
+              {{ scorings().length }} scoré(s) · {{ unscoredResumes().length }} en attente
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          @if (selectedCount() > 0) {
+            <button
+              (click)="openEvaluationInvitationModal()"
+              class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#E2001A] text-white hover:bg-red-700 transition shadow-sm"
+            >
+              <app-icon name="send" />
+              Envoyer ({{ selectedCount() }})
+            </button>
+          }
+          <button
+            (click)="closeListModal()"
+            class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition text-gray-500"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      @if (errorMessage()) {
+        <div class="mx-4 mt-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+          {{ errorMessage() }}
+        </div>
+      }
+
+      <!-- ── Body ── -->
+      <div class="flex-1 overflow-y-auto p-4">
+        <!-- Filter tabs -->
+        <div class="flex items-center gap-1 mb-4 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
+          <button
+            (click)="filterMode.set('all')"
+            class="px-3 py-1.5 rounded-md text-xs font-medium transition"
+            [class]="
+              filterMode() === 'all'
+                ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+            "
+          >
+            Tous
+          </button>
+          <button
+            (click)="filterMode.set('invited')"
+            class="px-3 py-1.5 rounded-md text-xs font-medium transition"
+            [class]="
+              filterMode() === 'invited'
+                ? 'bg-white dark:bg-gray-700 text-green-700 dark:text-green-400 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+            "
+          >
+            ✓ Invités
+          </button>
+          <button
+            (click)="filterMode.set('not_invited')"
+            class="px-3 py-1.5 rounded-md text-xs font-medium transition"
+            [class]="
+              filterMode() === 'not_invited'
+                ? 'bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+            "
+          >
+            ○ Non invités
+          </button>
+        </div>
+
+        @if (loading()) {
+          <div class="flex flex-col items-center py-16">
+            <div
+              class="animate-spin rounded-full h-12 w-12 border-4 border-red-200 border-t-red-600"
+            ></div>
+            <p class="text-sm text-gray-500 mt-4">Chargement des CVs...</p>
+          </div>
+        }
+
+        @if (!loading() && filteredScoredResumes().length > 0) {
+          <div class="mb-4">
+            <div class="flex items-center justify-between mb-3 px-1">
+              <div class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  [checked]="isAllSelected()"
+                  [indeterminate]="isIndeterminate()"
+                  (change)="toggleSelectAll()"
+                  class="w-4 h-4 rounded border-gray-300 text-[#E2001A] accent-[#E2001A] cursor-pointer"
+                />
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  Scorés ({{ scorings().length }})
+                </p>
+              </div>
+              @if (selectedCount() > 0) {
+                <span class="text-xs text-[#E2001A] font-medium"
+                  >{{ selectedCount() }} sélectionné(s)</span
+                >
+              }
+            </div>
+
+            <div class="space-y-2">
+              @for (s of filteredScoredResumes(); track s.id) {
+                <div
+                  (click)="toggleSelection(s.id)"
+                  role="button"
+                  tabindex="0"
+                  class="flex flex-col sm:flex-row w-full sm:items-center sm:justify-between p-4 rounded-xl border transition cursor-pointer gap-3"
+                  [class]="
+                    isSelected(s.id)
+                      ? 'border-[#E2001A] bg-red-50 dark:bg-red-900/10'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                  "
+                >
+                  <div class="flex items-center gap-4 min-w-0 flex-1">
+                    <input
+                      type="checkbox"
+                      [checked]="isSelected(s.id)"
+                      (click)="$event.stopPropagation(); toggleSelection(s.id)"
+                      class="w-4 h-4 rounded border-gray-300 accent-[#E2001A] cursor-pointer shrink-0"
+                    />
+                    <div
+                      class="shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold border-2"
+                      [ngClass]="getScoreCircleClass(s.scoreGlobal)"
+                    >
+                      {{ s.scoreGlobal }}%
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-sm font-semibold text-gray-500 dark:text-gray-400 truncate">
+                        {{ s.resumeName }}
+                      </p>
+                      @if (hasMissingFields(s.resumeFileId)) {
+                        <button
+                          (click)="$event.stopPropagation(); openMissingFieldsModal(s.resumeFileId)"
+                          class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition"
+                        >
+                          ⚠ Incomplet — Compléter
+                        </button>
+                      }
+                      <div class="flex items-center gap-2 mt-1">
+                        <span
+                          class="text-xs px-2 py-0.5 rounded-full font-medium"
+                          [ngClass]="getBadgeClass(s.status)"
+                        >
+                          {{ s.status }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    class="flex items-center gap-3 pl-15 sm:pl-0"
+                    role="presentation"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <div class="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        class="h-full rounded-full"
+                        [style.width.%]="s.scoreGlobal"
+                        [ngClass]="getBarColor(s.scoreGlobal)"
+                      ></div>
+                    </div>
+                    <button
+                      (click)="openHistoryModal(s.resumeFileId, s.resumeName)"
+                      class="p-1 rounded text-gray-300 hover:text-blue-400 transition"
+                      title="Voir les invitations"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      (click)="deleteScoringResume($event, s.id)"
+                      class="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                      title="Supprimer"
+                    >
+                      <app-icon name="trash" />
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (!loading() && unscoredResumes().length > 0) {
+          <div>
+            <div class="flex items-center justify-between mb-3 px-1 mt-2">
+              <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                À scorer ({{ unscoredResumes().length }})
+              </p>
+              <button
+                (click)="scoreAllCVs()"
+                [disabled]="loadingAll()"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#E2001A] text-white hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                @if (loadingAll()) {
+                  <span
+                    class="animate-spin rounded-full h-3 w-3 border-b-2 border-white inline-block mr-1"
+                  ></span>
+                }
+                {{ loadingAll() ? 'Scoring en cours...' : 'Scorer tous les CVs' }}
+              </button>
+            </div>
+            <div class="space-y-2">
+              @for (resume of filteredUnscoredResumes(); track resume.id) {
+                <div
+                  (click)="toggleUnscoredSelection(resume.id)"
+                  role="button"
+                  tabindex="0"
+                  class="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 rounded-xl border transition cursor-pointer gap-3"
+                  [class]="
+                    isUnscoredSelected(resume.id)
+                      ? 'border-[#E2001A] bg-red-50 dark:bg-red-900/10'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                  "
+                >
+                  <div class="flex items-center gap-4 min-w-0 flex-1">
+                    <input
+                      type="checkbox"
+                      [checked]="isUnscoredSelected(resume.id)"
+                      (click)="$event.stopPropagation(); toggleUnscoredSelection(resume.id)"
+                      class="w-4 h-4 rounded border-gray-300 accent-[#E2001A] cursor-pointer shrink-0"
+                    />
+                    <div
+                      class="shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold border-2 border-gray-300 text-gray-400 bg-gray-50"
+                    >
+                      ?
+                    </div>
+                    <div>
+                      <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate">
+                        {{ resume.name }}
+                      </p>
+                      @if (hasMissingFields(resume.id)) {
+                        <button
+                          (click)="$event.stopPropagation(); openMissingFieldsModal(resume.id)"
+                          class="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition"
+                        >
+                          ⚠ Incomplet — Compléter
+                        </button>
+                      }
+                      <p class="text-xs text-gray-400 mt-0.5">Non scoré</p>
+                    </div>
+                  </div>
+
+                  <div class="pl-15 sm:pl-0" role="presentation" (click)="$event.stopPropagation()">
+                    <button
+                      (click)="openHistoryModal(resume.id, resume.name)"
+                      class="p-1 rounded text-gray-300 hover:text-blue-400 transition"
+                      title="Voir les invitations"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (
+          !loading() &&
+          filteredScoredResumes().length === 0 &&
+          filteredUnscoredResumes().length === 0
+        ) {
+          <div class="flex flex-col items-center justify-center px-6 py-12 text-center">
+            <div class="text-4xl mb-3">📂</div>
+            <p class="text-sm italic text-gray-400">Aucun CV disponible pour cette fiche.</p>
+          </div>
+        }
+      </div>
+
+      @if (!loading() && filteredScoredResumes().length > 0) {
+        <div
+          class="flex items-center justify-between px-6 py-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl"
+        >
+          <span class="text-xs text-gray-400">
+            {{
+              selectedCount() === 0
+                ? 'Sélectionnez des CVs pour envoyer une invitation'
+                : selectedCount() + ' CV(s) sélectionné(s)'
+            }}
+          </span>
+          <button
+            (click)="openEvaluationInvitationModal()"
+            [disabled]="selectedCount() === 0"
+            class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#E2001A] text-white hover:bg-red-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <app-icon name="send" />
+            Envoyer les invitations
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+@if (showEvaluationInvitationModal()) {
+  <div
+    class="fixed inset-0 z-100001 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+  >
+    <button
+      type="button"
+      class="absolute inset-0 w-full h-full cursor-default"
+      (click)="closeEvaluationInvitationModal()"
+      aria-label="Fermer le modal"
+    ></button>
+    <div
+      class="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh] overflow-y-auto"
+    >
+      <div
+        class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 flex items-center justify-center rounded-lg bg-red-100 text-red-600">
+            <app-icon name="send" />
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-800 dark:text-white text-sm">
+              Envoyer les invitations
+            </h4>
+            <p class="text-xs text-gray-400">{{ selectedCount() }} candidat(s) sélectionné(s)</p>
+          </div>
+        </div>
+        <button
+          (click)="closeEvaluationInvitationModal()"
+          class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-400"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div class="px-6 py-5 space-y-5">
+        @if (invitationSuccess()) {
+          <div class="flex flex-col items-center py-6 text-center">
+            <div
+              class="w-14 h-14 flex items-center justify-center rounded-full bg-green-100 text-green-600 text-2xl mb-3"
+            >
+              ✓
+            </div>
+            <p class="font-semibold text-gray-800 dark:text-white">
+              Evaluation Invitations envoyées !
+            </p>
+            <p class="text-xs text-gray-400 mt-1">Les candidats ont reçu leur email.</p>
+          </div>
+        }
+
+        @if (!invitationSuccess()) {
+          @if (invitationError()) {
+            <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs">
+              {{ invitationError() }}
+            </div>
+          }
+          <div>
+            <label
+              for="evaluation-title"
+              class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1.5"
+            >
+              Évaluation technique
+            </label>
+            @if (evaluations().length > 0) {
+              <p
+                id="evaluation-title"
+                class="text-sm text-gray-700 dark:text-gray-200 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200"
+              >
+                {{ evaluations().find(e => e.id === selectedEvaluationId_signal())?.title ?? evaluations()[0].title }}
+              </p>
+            } @else {
+              <p id="evaluation-title" class="text-xs text-red-500 italic">
+                Aucune évaluation disponible pour ce poste.
+              </p>
+            }
+          </div>
+          <div>
+            <label
+              for="due-date"
+              class="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1.5"
+            >
+              Date d'échéance <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="due-date"
+              type="date"
+              [min]="minDate()"
+              [value]="dueDate()"
+              (input)="onDueDateChange($any($event.target).value)"
+              class="w-full px-3 py-2 text-sm rounded-lg border transition focus:outline-none focus:ring-2"
+              [class]="
+                dueDate() && dueDate() < minDate()
+                  ? 'border-red-400 bg-red-50 focus:ring-red-300 focus:border-red-400 text-red-700'
+                  : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:ring-[#E2001A]/30 focus:border-[#E2001A]'
+              "
+            />
+            @if (dueDate() && dueDate() < minDate()) {
+              <p class="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+                <span>⚠</span> La date d'échéance ne peut pas être dans le passé.
+              </p>
+            }
+          </div>
+          <div
+            class="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 px-4 py-3 text-xs text-blue-700 dark:text-blue-300 space-y-1"
+          >
+            <p class="font-semibold">Contenu de l'email envoyé :</p>
+            <ul class="list-disc list-inside space-y-0.5 text-blue-600 dark:text-blue-400">
+              <li>Nom & prénom du candidat</li>
+              <li>Titre de l'évaluation technique</li>
+              <li>Date d'échéance</li>
+              <li>Lien du dépôt Git</li>
+              <li>Contenu complet de l'évaluation</li>
+            </ul>
+          </div>
+        }
+      </div>
+
+      @if (!invitationSuccess()) {
+        <div
+          class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700"
+        >
+          <button
+            (click)="closeEvaluationInvitationModal()"
+            class="px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+          >
+            Annuler
+          </button>
+          <button
+            (click)="sendEvaluationInvitations()"
+            [disabled]="sendingEvaluationInvitation() || !dueDate()"
+            class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium bg-[#E2001A] text-white hover:bg-red-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            @if (sendingEvaluationInvitation()) {
+              <span
+                class="animate-spin rounded-full h-4 w-4 border-b-2 border-white inline-block"
+              ></span>
+              Envoi en cours…
+            } @else {
+              <app-icon name="send" />
+              Envoyer
+            }
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+@if (showHistoryModal()) {
+  <app-invitation-history-modal
+    [resumeFileId]="historyModalResumeFileId()"
+    [candidateName]="historyModalCandidateName()"
+    [evaluations]="evaluations()"
+    [evaluation]="evaluations().find(e => e.id === selectedEvaluationId_signal()) ?? null"
+    [filterByEvaluationId]="selectedEvaluationId_signal()"
+    [canDelete]="canDelete"
+    [canViewGitRepo]="canViewGitRepo"
+    [codeEvaluations]="codeEvaluations()"
+    [quizResults]="quizResults()"
+    [evaluatingInvitationId]="evaluatingInvitationId()"
+    (closeModal)="closeHistoryModal()"
+    (invitationDeleted)="onInvitationDeleted()"
+    (evaluate)="onEvaluate($event)"
+    (openCodeEval)="openCodeEvalModal($event)"
+    (openQuizResult)="openQuizResultModal($event)"
+  />
+}
+
+@if (showCodeEvalModal() && selectedCodeEval()) {
+  <app-code-eval-result-modal [codeEval]="selectedCodeEval()!" (close)="closeCodeEvalModal()" />
+}
+
+@if (showQuizResultModal() && selectedQuizResult()) {
+  <app-quiz-result-modal [quizResult]="selectedQuizResult()!" (close)="closeQuizResultModal()" />
+}
+@if (showMissingFieldsModal() && missingFieldsTarget()) {
+  <app-missing-fields-modal
+    [target]="missingFieldsTarget()!"
+    (closeModal)="closeMissingFieldsModal()"
+    (fieldsSaved)="onFieldsSaved($event)"
+  />
+}
+
+@if (toastMessage()) {
+  <div
+    class="fixed bottom-4 right-4 z-10000 px-4 py-3 rounded-lg shadow-lg text-white text-sm flex items-center gap-2 animate-slide-up"
+    [ngClass]="toastType() === 'success' ? 'bg-green-600' : 'bg-red-600'"
+  >
+    @if (toastType() === 'success') {
+      <span class="text-lg">✓</span>
+    }
+    @if (toastType() === 'error') {
+      <span class="text-lg">✗</span>
+    }
+    {{ toastMessage() }}
+  </div>
+}

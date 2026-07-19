@@ -1,0 +1,352 @@
+<div class="flex flex-col h-full w-56 sm:w-64">
+  <!-- Bouton nouvelle conversation -->
+  <div class="h-13 flex items-center px-3 border-b border-gray-200 dark:border-gray-700">
+    <button
+      (click)="newConversation.emit()"
+      class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#E2001A] text-white text-sm font-medium hover:bg-red-700 transition-colors"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      Nouvelle conversation
+    </button>
+  </div>
+
+  <!-- Liste historique -->
+  <div class="flex-1 overflow-y-auto p-2 pt-4 space-y-3">
+    <!-- Zone épinglées -->
+    @if (pinnedConversations.length > 0) {
+      <div>
+        <div class="flex items-center gap-1.5 px-3 py-1">
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            class="text-amber-500"
+          >
+            <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+          </svg>
+          <p class="text-xs font-semibold uppercase tracking-wide text-amber-500">Épinglées</p>
+        </div>
+        @for (conv of pinnedConversations; track conv.id) {
+          <ng-container
+            [ngTemplateOutlet]="convRow"
+            [ngTemplateOutletContext]="{ conv: conv }"
+          ></ng-container>
+        }
+      </div>
+      <hr class="border-gray-200 dark:border-gray-700 mx-2 my-1" />
+    }
+
+    <!-- Zone historique -->
+    <div>
+      <div class="flex items-center gap-1.5 px-3 py-1">
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+          Historique
+        </p>
+      </div>
+
+      @if (unpinnedConversations.length === 0) {
+        <p class="text-xs text-gray-400 text-center mt-4">Aucune conversation</p>
+      }
+
+      @for (conv of unpinnedConversations; track conv.id) {
+        <ng-container
+          [ngTemplateOutlet]="convRow"
+          [ngTemplateOutletContext]="{ conv: conv }"
+        ></ng-container>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- ─── Template ligne conversation ─────────────────────────────────────────── -->
+<ng-template #convRow let-conv="conv">
+  <button
+    (click)="conversationSelected.emit(conv)"
+    class="group w-full flex items-center gap-2 px-2.5 py-2.5 rounded-xl cursor-pointer transition-colors text-left relative"
+    [class.bg-red-50]="conv.id === selectedConversationId"
+    [class.text-[#E2001A]]="conv.id === selectedConversationId"
+    [class.hover:bg-gray-100]="conv.id !== selectedConversationId"
+    [class.dark:hover:bg-gray-700]="conv.id !== selectedConversationId"
+  >
+    <!-- Icône -->
+    @if (conv.isPinned) {
+      <svg
+        width="11"
+        height="11"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        class="shrink-0 text-amber-400"
+      >
+        <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+      </svg>
+    } @else {
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="shrink-0 text-gray-400">
+        <path
+          fill-rule="evenodd"
+          clip-rule="evenodd"
+          d="M12 2.75C6.89137 2.75 2.75 6.89137 2.75 12C2.75 13.7372 3.22371 15.3625 4.04824 16.7568L3.03847 19.8268C2.87082 20.3321 3.36222 20.8097 3.86328 20.6283L6.83487 19.5643C8.28 20.4841 9.98145 21.25 12 21.25C17.1086 21.25 21.25 17.1086 21.25 12C21.25 6.89137 17.1086 2.75 12 2.75Z"
+          fill="currentColor"
+        />
+      </svg>
+    }
+
+    <!-- Titre -->
+    <div class="flex-1 min-w-0">
+      <p class="text-sm truncate font-medium text-gray-800 dark:text-white">{{ conv.title }}</p>
+    </div>
+
+    <!-- Menu 3 points -->
+    <div class="relative shrink-0">
+      <button
+        (click)="toggleMenu($event, conv.id)"
+        class="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 hover:text-gray-600"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="5" r="2" />
+          <circle cx="12" cy="12" r="2" />
+          <circle cx="12" cy="19" r="2" />
+        </svg>
+      </button>
+
+      @if (openMenuId() === conv.id) {
+        <div
+          class="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-700 rounded-xl shadow-lg border border-gray-200 dark:border-gray-600 overflow-hidden min-w-36"
+        >
+          <!-- Épingler / Dépingler -->
+          <button
+            (click)="onPin($event, conv.id, conv.isPinned)"
+            class="w-full px-4 py-2.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-2.5 transition-colors"
+            [class.text-amber-600]="conv.isPinned"
+            [class.text-gray-700]="!conv.isPinned"
+            [class.dark:text-gray-200]="!conv.isPinned"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              [class.text-amber-500]="conv.isPinned"
+              [class.text-gray-400]="!conv.isPinned"
+            >
+              <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+            </svg>
+            {{ conv.isPinned ? 'Dépingler' : 'Épingler' }}
+          </button>
+
+          <!-- Renommer (uniquement pour non-épinglées) -->
+          @if (!conv.isPinned) {
+            <button
+              (click)="onRename($event, conv.id)"
+              class="w-full px-4 py-2.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 flex items-center gap-2.5 border-t border-gray-100 dark:border-gray-600 transition-colors"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                class="text-gray-400"
+              >
+                <path
+                  d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                />
+              </svg>
+              Renommer
+            </button>
+          }
+
+          <!-- Supprimer -->
+          <button
+            (click)="onDelete($event, conv.id)"
+            class="w-full px-4 py-2.5 text-sm text-left hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 flex items-center gap-2.5 border-t border-gray-100 dark:border-gray-600 transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="text-red-400">
+              <path
+                d="M3 6h2l1.4 14.3c.1.9.9 1.7 1.8 1.7h8.4c.9 0 1.7-.8 1.8-1.7L19 6h2M8 6V4c0-.6.4-1 1-1h6c.6 0 1 .4 1 1v2m-4 4v8m-3-8v8m6-8v8"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Supprimer
+          </button>
+        </div>
+      }
+    </div>
+  </button>
+</ng-template>
+
+<!-- ═══ Modal Renommer ══════════════════════════════════════════════════════════ -->
+@if (showRenameModal()) {
+  <div
+    class="fixed inset-0 z-100000 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+    tabindex="0"
+    (click)="cancelRename()"
+    (keydown.escape)="cancelRename()"
+  >
+    <div
+      class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden"
+      role="dialog"
+      aria-modal="true"
+      tabindex="0"
+      (click)="$event.stopPropagation()"
+      (keydown)="$event.stopPropagation()"
+    >
+      <div
+        class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-700"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-950 flex items-center justify-center"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              class="text-[#E2001A]"
+            >
+              <path
+                d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+              />
+            </svg>
+          </div>
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">
+            Renommer la conversation
+          </h3>
+        </div>
+        <button
+          (click)="cancelRename()"
+          class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M18 6L6 18M6 6l12 12"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div class="px-6 py-5">
+        <label
+          for="rh-rename-input"
+          class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide"
+        >
+          Nouveau titre
+        </label>
+        <input
+          #renameInput
+          id="rh-rename-input"
+          type="text"
+          [(ngModel)]="renameValue"
+          (keydown)="onRenameKeydown($event)"
+          placeholder="Entrez un titre..."
+          class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E2001A] focus:border-transparent transition-all"
+        />
+        <p class="text-xs text-gray-400 mt-2">Appuyez sur Entrée pour valider.</p>
+      </div>
+
+      <div class="flex gap-3 px-6 pb-6">
+        <button
+          (click)="cancelRename()"
+          class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          Annuler
+        </button>
+        <button
+          (click)="confirmRename()"
+          [disabled]="!renameValue.trim()"
+          class="flex-1 px-4 py-2.5 rounded-xl bg-[#E2001A] hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
+        >
+          Renommer
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ Modal Supprimer ════════════════════════════════════════════════════════ -->
+@if (showDeleteModal()) {
+  <div
+    class="fixed inset-0 z-100000 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+    tabindex="0"
+    (click)="cancelDelete()"
+    (keydown.escape)="cancelDelete()"
+  >
+    <div
+      class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden"
+      role="dialog"
+      aria-modal="true"
+      tabindex="0"
+      (click)="$event.stopPropagation()"
+      (keydown)="$event.stopPropagation()"
+    >
+      <div
+        class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-700"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-950 flex items-center justify-center"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-red-500">
+              <path
+                d="M3 6h2l1.4 14.3c.1.9.9 1.7 1.8 1.7h8.4c.9 0 1.7-.8 1.8-1.7L19 6h2M8 6V4c0-.6.4-1 1-1h6c.6 0 1 .4 1 1v2m-4 4v8m-3-8v8m6-8v8"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">
+            Supprimer la conversation
+          </h3>
+        </div>
+        <button
+          (click)="cancelDelete()"
+          class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M18 6L6 18M6 6l12 12"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div class="px-6 py-5">
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+          Êtes-vous sûr de vouloir supprimer
+          <span class="font-semibold text-gray-900 dark:text-white"
+            >"{{ getPendingDeleteTitle() }}"</span
+          >
+          ? Cette action est irréversible.
+        </p>
+      </div>
+
+      <div class="flex gap-3 px-6 pb-6">
+        <button
+          (click)="cancelDelete()"
+          class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          Annuler
+        </button>
+        <button
+          (click)="confirmDelete()"
+          class="flex-1 px-4 py-2.5 rounded-xl bg-[#E2001A] hover:bg-red-700 text-sm font-medium text-white transition-colors"
+        >
+          Supprimer
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,253 @@
+<div
+  class="h-[calc(100dvh-9rem)] min-h-[70vh] flex flex-col overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg bg-white dark:bg-gray-900"
+>
+  <!-- ═══ EN-TÊTE ═══ -->
+  <div class="flex items-center gap-3 px-3 pt-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+    <button
+      (click)="toggleSidebar()"
+      aria-label="Ouvrir/fermer la barre latérale"
+      class="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M3 6H21M3 12H21M3 18H21"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+      </svg>
+    </button>
+    <h1 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white truncate tracking-tight">
+      Assistant RH
+    </h1>
+  </div>
+
+  <!-- ═══ CORPS ═══ -->
+  <div class="flex flex-1 overflow-hidden relative">
+    <!-- Overlay mobile -->
+    @if (showSidebar$ | async) {
+      <button
+        (click)="toggleSidebar()"
+        (keydown.escape)="toggleSidebar()"
+        aria-label="Fermer la barre latérale"
+        class="absolute inset-0 z-30 bg-black/40 md:hidden"
+      ></button>
+    }
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <div
+      class="absolute md:static top-0 bottom-0 left-0 z-40 h-full overflow-y-auto border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-transform duration-200 ease-out md:translate-x-0"
+      [class.-translate-x-full]="
+        (showSidebar$ | async) === false || (showSidebar$ | async) === null
+      "
+      [class.translate-x-0]="!!(showSidebar$ | async)"
+    >
+      <app-rh-conversation-sidebar
+        [conversations]="sidebarHistory"
+        [selectedConversationId]="selectedConversationId"
+        (conversationSelected)="onConversationSelected($event)"
+        (conversationPinned)="onConversationPinned($event)"
+        (conversationRenamed)="onConversationRenamed($event)"
+        (conversationDeleted)="onConversationDeleted($event)"
+        (newConversation)="resetChat()"
+      />
+    </div>
+
+    <!-- ═══ ZONE CHAT ═══ -->
+    <div class="flex flex-col flex-1 overflow-hidden min-w-0 bg-white dark:bg-gray-900">
+      <!-- Titre conversation active -->
+      <div
+        class="h-13 flex items-center px-3 sm:px-4 border-b border-gray-200 dark:border-gray-700 shrink-0"
+      >
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+          <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate">
+            @if (selectedConversationId) {
+              {{ sidebarHistory.find(c => c.id === selectedConversationId)?.title ?? 'Nouvelle conversation' }}
+            } @else {
+              Sélectionnez une conversation ou commencez-en une nouvelle
+            }
+          </p>
+        </div>
+      </div>
+
+      <!-- Error banner -->
+      @if (error$ | async; as err) {
+        <div
+          class="mx-4 mt-3 px-4 py-2.5 rounded-lg bg-red-50 text-sm text-red-600 border border-red-200"
+        >
+          ⚠️ {{ err }}
+        </div>
+      }
+
+      <!-- ═══ MESSAGES ═══ -->
+      <div
+        class="flex-1 overflow-y-auto px-2 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6"
+        #messagesBox
+      >
+        @if ((hasMessages$ | async) === false || (hasMessages$ | async) === null) {
+          <div class="flex flex-col items-center justify-center h-full text-center gap-4">
+            <div
+              class="w-16 h-16 rounded-full bg-red-50 dark:bg-red-950 flex items-center justify-center"
+            >
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <path
+                  fill-rule="evenodd"
+                  clip-rule="evenodd"
+                  d="M12 2.75C6.89137 2.75 2.75 6.89137 2.75 12C2.75 13.7372 3.22371 15.3625 4.04824 16.7568L3.03847 19.8268C2.87082 20.3321 3.36222 20.8097 3.86328 20.6283L6.83487 19.5643C8.28 20.4841 9.98145 21.25 12 21.25C17.1086 21.25 21.25 17.1086 21.25 12C21.25 6.89137 17.1086 2.75 12 2.75ZM8 11.25C7.58579 11.25 7.25 11.5858 7.25 12C7.25 12.4142 7.58579 12.75 8 12.75H16C16.4142 12.75 16.75 12.4142 16.75 12C16.75 11.5858 16.4142 11.25 16 11.25H8ZM7.25 9C7.25 8.58579 7.58579 8.25 8 8.25H13C13.4142 8.25 13.75 8.58579 13.75 9C13.75 9.41421 13.4142 9.75 13 9.75H8C7.58579 9.75 7.25 9.41421 7.25 9Z"
+                  fill="currentColor"
+                  class="text-[#E2001A]"
+                />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+                Bonjour ! Je suis votre Assistant RH
+              </h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Posez vos questions sur le règlement, les congés, les salaires…
+              </p>
+            </div>
+            <div class="w-full max-w-sm space-y-2 mt-2">
+              @for (s of suggestions; track s.text) {
+                <button
+                  (click)="useSuggestion(s.text)"
+                  [disabled]="!!(isLoading$ | async)"
+                  class="w-full text-left px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 hover:border-[#E2001A] hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {{ s.icon }} {{ s.text }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        @for (msg of messages$ | async; track trackByMessage($index, msg)) {
+          <div class="flex gap-2 sm:gap-3" [class.flex-row-reverse]="msg.role === 'user'">
+            <div
+              class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
+              [class.bg-[#E2001A]]="msg.role === 'user' && !currentUser?.picture"
+              [class.text-white]="msg.role === 'user' && !currentUser?.picture"
+              [class.bg-gray-100]="msg.role === 'assistant'"
+              [class.dark:bg-gray-700]="msg.role === 'assistant'"
+              [class.text-gray-600]="msg.role === 'assistant'"
+              [class.dark:text-gray-300]="msg.role === 'assistant'"
+            >
+              @if (msg.role === 'user') {
+                @if (currentUser?.picture) {
+                  <img
+                    [src]="currentUser?.picture"
+                    alt="avatar"
+                    class="w-8 h-8 rounded-full object-cover"
+                  />
+                } @else {
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path
+                      fill-rule="evenodd"
+                      clip-rule="evenodd"
+                      d="M12 4.75C10.2051 4.75 8.75 6.20507 8.75 8C8.75 9.79493 10.2051 11.25 12 11.25C13.7949 11.25 15.25 9.79493 15.25 8C15.25 6.20507 13.7949 4.75 12 4.75ZM7.25 8C7.25 5.37665 9.37665 3.25 12 3.25C14.6234 3.25 16.75 5.37665 16.75 8C16.75 10.6234 14.6234 12.75 12 12.75C9.37665 12.75 7.25 10.6234 7.25 8ZM6.5 16.75C5.5335 16.75 4.75 17.5335 4.75 18.5V19.25C4.75 19.6642 4.41421 20 4 20C3.58579 20 3.25 19.6642 3.25 19.25V18.5C3.25 16.7051 4.70507 15.25 6.5 15.25H17.5C19.2949 15.25 20.75 16.7051 20.75 18.5V19.25C20.75 19.6642 20.4142 20 20 20C19.5858 20 19.25 19.6642 19.25 19.25V18.5C19.25 17.5335 18.4665 16.75 17.5 16.75H6.5Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                }
+              } @else {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 6C13.93 6 15.5 7.57 15.5 9.5C15.5 11.43 13.93 13 12 13C10.07 13 8.5 11.43 8.5 9.5C8.5 7.57 10.07 6 12 6ZM12 20C9.97 20 7.57 19.18 5.86 17.12C7.55 15.8 9.68 15 12 15C14.32 15 16.45 15.8 18.14 17.12C16.43 19.18 14.03 20 12 20Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              }
+            </div>
+
+            <div
+              class="max-w-[88%] sm:max-w-[75%] rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm"
+              [class.bg-[#E2001A]]="msg.role === 'user'"
+              [class.text-white]="msg.role === 'user'"
+              [class.rounded-tr-sm]="msg.role === 'user'"
+              [class.bg-gray-100]="msg.role === 'assistant'"
+              [class.dark:bg-gray-800]="msg.role === 'assistant'"
+              [class.text-gray-800]="msg.role === 'assistant'"
+              [class.dark:text-gray-100]="msg.role === 'assistant'"
+              [class.rounded-tl-sm]="msg.role === 'assistant'"
+            >
+              @if (msg.isLoading) {
+                <div class="flex gap-1 items-center h-5">
+                  <span
+                    class="w-2 h-2 rounded-full bg-gray-400 animate-bounce"
+                    style="animation-delay: 0ms"
+                  ></span>
+                  <span
+                    class="w-2 h-2 rounded-full bg-gray-400 animate-bounce"
+                    style="animation-delay: 150ms"
+                  ></span>
+                  <span
+                    class="w-2 h-2 rounded-full bg-gray-400 animate-bounce"
+                    style="animation-delay: 300ms"
+                  ></span>
+                </div>
+              } @else {
+                <p class="whitespace-pre-wrap leading-relaxed">{{ msg.content }}</p>
+                @if (msg.createdAt) {
+                  <span class="text-xs opacity-60 mt-1 block">{{
+                    msg.createdAt | date: 'HH:mm'
+                  }}</span>
+                }
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- ═══ INPUT ═══ -->
+      <div
+        class="flex items-end gap-2 p-2 sm:p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+      >
+        <textarea
+          [(ngModel)]="question"
+          (keydown)="onKeyDown($event)"
+          [disabled]="!!(isLoading$ | async)"
+          placeholder="Posez votre question RH..."
+          rows="1"
+          class="flex-1 resize-none rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#E2001A] disabled:opacity-50 transition-all"
+        ></textarea>
+        <button
+          (click)="sendMessage()"
+          [disabled]="!!(isLoading$ | async) || !question.trim()"
+          class="flex items-center justify-center w-10 h-10 rounded-xl bg-[#E2001A] hover:bg-red-700 text-white transition-all duration-200 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          @if (!!(isLoading$ | async)) {
+            <svg class="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+          } @else {
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M22 2L11 13"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M22 2L15 22L11 13L2 9L22 2Z"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

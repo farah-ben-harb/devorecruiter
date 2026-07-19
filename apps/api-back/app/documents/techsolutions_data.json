@@ -1,0 +1,399 @@
+{
+  "entreprise": {
+    "nom": "TECHSOLUTIONS S.A.R.L",
+    "type": "Societe a Responsabilite Limitee",
+    "secteur": "Developpement Logiciel & Solutions Numeriques",
+    "siege": "45, Avenue de la Republique, Tunis 1000, Tunisie",
+    "telephone": "+216 71 000 000",
+    "email": "contact@techsolutions.tn",
+    "site_web": "www.techsolutions.tn",
+    "annee_creation": 2015,
+    "capital_social": "500 000 TND",
+    "matricule_fiscal": "TN-12345678-A",
+    "effectif_total": 40,
+    "version_document": "2025.1",
+    "date_mise_en_vigueur": "2025-01-01"
+  },
+
+  "hierarchie": {
+    "description": "Structure organisationnelle en 6 niveaux hierarchiques",
+    "niveaux": [
+      {
+        "niveau": "N1",
+        "libelle": "Direction Generale",
+        "postes": [
+          {
+            "titre": "Directeur General (DG)",
+            "departement": "Direction",
+            "superieur_direct": "Conseil d'Administration",
+            "effectif": 1,
+            "salaire_min_tnd": 10000,
+            "salaire_max_tnd": 15000,
+            "droits_acces": "TOTAL",
+            "conges_annuels_jours": 30,
+            "teletravail_jours_semaine": 5,
+            "responsabilites": [
+              "Vision strategique et politique generale de l'entreprise",
+              "Representation legale et judiciaire de la societe",
+              "Decisions d'investissement et approbation du budget",
+              "Signature des contrats majeurs",
+              "Reporting au Conseil d'Administration"
+            ]
+          }
+        ]
+      },
+      {
+        "niveau": "N2",
+        "libelle": "Direction Departementale",
+        "postes": [
+          {
+            "titre": "Directeur Technique (CTO)",
+            "departement": "Technique",
+            "superieur_direct": "DG",
+            "effectif": 1,
+            "salaire_min_tnd": 8000,
+            "salaire_max_tnd": 11000,
+            "droits_acces": "TOTAL",
+            "conges_annuels_jours": 28,
+            "teletravail_jours_semaine": 4,
+            "responsabilites": [
+              "Definition de la strategie technique et technologique",
+              "Supervision de l'ensemble des equipes de developpement",
+              "Choix des technologies, architectures et methodes de travail",
+              "Garantie de la qualite et de la securite des livrables",
+              "Veille technologique et innovation"
+            ]
+          },
+          {
+            "titre": "Directeur Commercial (CCO)",
+            "departement": "Commercial",
+            "superieur_direct": "DG",
+            "effectif": 1,
+            "salaire_min_tnd": 7500,
+            "salaire_max_tnd": 10000,
+            "droits_acces": "ETENDU",
+            "conges_annuels_jours": 28,
+            "teletravail_jours_semaine": 4,
+            "responsabilites": [
+              "Elaboration et execution de la strategie commerciale",
+              "Gestion du portefeuille clients et des grands comptes",
+              "Developpement des partenariats strategiques",
+              "Supervision de l'equipe commerciale et marketing",
+              "Atteinte des objectifs de chiffre d'affaires"
+            ]
+          },
+          {
+            "titre": "Directeur des Ressources Humaines (DRH)",
+            "departement": "Ressources Humaines",
+            "superieur_direct": "DG",
+            "effectif": 1,
+            "salaire_min_tnd": 7000,
+            "salaire_max_tnd": 9500,
+            "droits_acces": "RH_COMPLET",
+            "conges_annuels_jours": 28,
+            "teletravail_jours_semaine": 4,
+            "responsabilites": [
+              "Politique de recrutement, integration et retention des talents",
+              "Gestion de la paie, des conges et des avantages sociaux",
+              "Application du reglement interieur et des procedures disciplinaires",
+              "Formation et developpement des competences",
+              "Relations sociales et bien-etre des salaries"
+            ]
+          }
+        ]
+      },
+      {
+        "niveau": "N3",
+        "libelle": "Management Senior",
+        "postes": [
+          {
+            "titre": "Chef de Projet Senior",
+            "departement": "Technique",
+            "superieur_direct": "CTO",
+            "effectif": 3,
+            "salaire_min_tnd": 4500,
+            "salaire_max_tnd": 6500,
+            "droits_acces": "GESTION_PROJET",
+            "conges_annuels_jours": 25,
+            "teletravail_jours_semaine": 3
+          },
+          {
+            "titre": "Architecte Logiciel",
+            "departement": "Technique",
+            "superieur_direct": "CTO",
+            "effectif": 2,
+            "salaire_min_tnd": 5000,
+            "salaire_max_tnd": 7500,
+            "droits_acces": "ACCES_TECHNIQUE",
+            "conges_annuels_jours": 25,
+            "teletravail_jours_semaine": 3
+          },
+          {
+            "titre": "Lead Developer",
+            "departement": "Technique",
+            "superieur_direct": "Chef de Projet",
+            "effectif": 2,
+            "salaire_min_tnd": 4800,
+            "salaire_max_tnd": 6800,
+            "droits_acces": "DEV_PLUS_CICD",
+            "conges_annuels_jours": 25,
+            "teletravail_jours_semaine": 3
+          },
+          {
+            "titre": "Responsable Commercial",
+            "departement": "Commercial",
+            "superieur_direct": "CCO",
+            "effectif": 2,
+            "salaire_min_tnd": 4000,
+            "salaire_max_tnd": 5500,
+            "droits_acces": "CRM_COMPLET",
+            "conges_annuels_jours": 25,
+            "teletravail_jours_semaine": 3
+          }
+        ]
+      },
+      {
+        "niveau": "N4",
+        "libelle": "Specialistes",
+        "postes": [
+          {
+            "titre": "Developpeur Senior",
+            "departement": "Technique",
+            "superieur_direct": "Lead Developer",
+            "effectif": 6,
+            "salaire_min_tnd": 3500,
+            "salaire_max_tnd": 5000,
+            "droits_acces": "DEV_STANDARD",
+            "conges_annuels_jours": 22,
+            "teletravail_jours_semaine": 2
+          },
+          {
+            "titre": "Designer UX/UI",
+            "departement": "Technique",
+            "superieur_direct": "Chef de Projet",
+            "effectif": 2,
+            "salaire_min_tnd": 3000,
+            "salaire_max_tnd": 4200,
+            "droits_acces": "DESIGN_STAGING",
+            "conges_annuels_jours": 22,
+            "teletravail_jours_semaine": 2
+          },
+          {
+            "titre": "Charge de Recrutement",
+            "departement": "RH",
+            "superieur_direct": "DRH",
+            "effectif": 2,
+            "salaire_min_tnd": 2800,
+            "salaire_max_tnd": 3800,
+            "droits_acces": "RH_PARTIEL",
+            "conges_annuels_jours": 22,
+            "teletravail_jours_semaine": 2
+          }
+        ]
+      },
+      {
+        "niveau": "N5",
+        "libelle": "Collaborateurs",
+        "postes": [
+          {
+            "titre": "Developpeur Junior",
+            "departement": "Technique",
+            "superieur_direct": "Developpeur Senior",
+            "effectif": 8,
+            "salaire_min_tnd": 2200,
+            "salaire_max_tnd": 3200,
+            "droits_acces": "DEV_LIMITE",
+            "conges_annuels_jours": 20,
+            "teletravail_jours_semaine": 1
+          },
+          {
+            "titre": "Assistant RH",
+            "departement": "RH",
+            "superieur_direct": "DRH",
+            "effectif": 1,
+            "salaire_min_tnd": 1800,
+            "salaire_max_tnd": 2500,
+            "droits_acces": "RH_MINIMAL",
+            "conges_annuels_jours": 20,
+            "teletravail_jours_semaine": 1
+          }
+        ]
+      },
+      {
+        "niveau": "N6",
+        "libelle": "Stagiaires",
+        "postes": [
+          {
+            "titre": "Stagiaire Technique",
+            "departement": "Technique",
+            "superieur_direct": "Developpeur Senior ou Lead",
+            "effectif": 4,
+            "gratification_tnd": 800,
+            "droits_acces": "MINIMAL",
+            "conges_annuels_jours": 15,
+            "teletravail_jours_semaine": 0
+          },
+          {
+            "titre": "Stagiaire Commercial",
+            "departement": "Commercial",
+            "superieur_direct": "Responsable Commercial",
+            "effectif": 2,
+            "gratification_tnd": 600,
+            "droits_acces": "CRM_LECTURE",
+            "conges_annuels_jours": 15,
+            "teletravail_jours_semaine": 0
+          }
+        ]
+      }
+    ]
+  },
+
+  "reglement_interieur": {
+    "version": "2025.1",
+    "date_approbation": "2025-01-01",
+    "approbateur": "Directeur General",
+    "chapitres": [
+      {
+        "id": "CH1",
+        "titre": "Dispositions Generales",
+        "articles": [
+          {
+            "id": "ART-001",
+            "titre": "Objet",
+            "categorie": "General",
+            "statut": "en_vigueur",
+            "contenu": "Le present reglement interieur fixe les regles relatives a la discipline generale, aux conditions d'hygiene et de securite, ainsi qu'aux droits et obligations de l'ensemble du personnel de TECHSOLUTIONS S.A.R.L."
+          },
+          {
+            "id": "ART-002",
+            "titre": "Champ d'application",
+            "categorie": "General",
+            "statut": "en_vigueur",
+            "contenu": "Le present reglement s'applique a l'ensemble du personnel permanent, temporaire, stagiaire et prestataire travaillant dans les locaux ou a distance pour le compte de la societe."
+          }
+        ]
+      },
+      {
+        "id": "CH2",
+        "titre": "Horaires et Organisation du Travail",
+        "articles": [
+          {
+            "id": "ART-003",
+            "titre": "Horaires de travail",
+            "categorie": "Travail",
+            "statut": "en_vigueur",
+            "contenu": "La duree hebdomadaire de travail est fixee a 40 heures sur 5 jours. Horaires: 08h30-17h30 avec 1h de pause dejeuner.",
+            "horaires": {
+              "debut": "08:30",
+              "fin": "17:30",
+              "pause_dejeuner_minutes": 60,
+              "jours_travailles": ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]
+            }
+          },
+          {
+            "id": "ART-004",
+            "titre": "Teletravail",
+            "categorie": "Travail",
+            "statut": "en_vigueur",
+            "contenu": "Le teletravail est autorise selon le niveau hierarchique, sur accord ecrit du responsable hierarchique.",
+            "conditions": ["Equipement adequat", "Connexion internet stable", "Disponibilite durant les heures habituelles", "Accord ecrit du manager"]
+          },
+          {
+            "id": "ART-005",
+            "titre": "Heures supplementaires",
+            "categorie": "Travail",
+            "statut": "en_vigueur",
+            "contenu": "Les heures supplementaires sont effectuees sur demande expresse de la hierarchie uniquement. Compensation: repos compensateur ou remuneration majoree de 25% les jours normaux, 50% les weekends."
+          }
+        ]
+      },
+      {
+        "id": "CH3",
+        "titre": "Regles de Conduite et Discipline",
+        "articles": [
+          {
+            "id": "ART-006",
+            "titre": "Comportement professionnel",
+            "categorie": "Discipline",
+            "statut": "en_vigueur",
+            "contenu": "Un comportement respectueux et professionnel est exige. Le harcelement, la discrimination et la violence sont des fautes graves passibles de licenciement immediat.",
+            "tolerance_zero": ["Harcelement moral", "Harcelement sexuel", "Discrimination", "Violence physique", "Violence verbale grave"]
+          },
+          {
+            "id": "ART-007",
+            "titre": "Utilisation des ressources informatiques",
+            "categorie": "Informatique",
+            "statut": "en_vigueur",
+            "contenu": "Les ressources informatiques sont reservees a un usage professionnel. Interdictions formelles: installation de logiciels non approuves, telechargement illicite, divulgation d'identifiants.",
+            "interdictions": [
+              "Installation de logiciels non approuves par IT",
+              "Acces a des sites inappropries ou illicites",
+              "Partage des identifiants de connexion",
+              "Stockage de donnees personnelles sur les serveurs de l'entreprise",
+              "Utilisation de cles USB non chiffrees"
+            ]
+          },
+          {
+            "id": "ART-008",
+            "titre": "Confidentialite",
+            "categorie": "Informatique",
+            "statut": "en_vigueur",
+            "contenu": "Obligation de confidentialite perpetuelle sur: codes sources, donnees clients, strategies, tarifications. L'obligation subsiste apres la fin du contrat.",
+            "donnees_protegees": ["Codes sources et algorithmes", "Base de donnees clients", "Strategies commerciales", "Tarifications et propositions commerciales", "Documents financiers internes"]
+          }
+        ]
+      },
+      {
+        "id": "CH4",
+        "titre": "Sante, Securite et Bien-etre",
+        "articles": [
+          {
+            "id": "ART-009",
+            "titre": "Hygiene et securite",
+            "categorie": "Securite",
+            "statut": "en_vigueur",
+            "contenu": "Respect obligatoire des consignes de securite. Declaration obligatoire de tout accident dans les 24h.",
+            "interdictions_locaux": ["Fumer", "Consommer de l'alcool", "Consommer des substances illicites", "Se presenter en etat d'ivresse"]
+          }
+        ]
+      },
+      {
+        "id": "CH5",
+        "titre": "Sanctions Disciplinaires",
+        "articles": [
+          {
+            "id": "ART-010",
+            "titre": "Echelle des sanctions",
+            "categorie": "Sanctions",
+            "statut": "en_vigueur",
+            "contenu": "Sanctions appliquees selon la gravite des faits.",
+            "echelle": [
+              {"niveau": 1, "sanction": "Avertissement oral", "delai_prescription_mois": 3},
+              {"niveau": 2, "sanction": "Avertissement ecrit", "delai_prescription_mois": 6},
+              {"niveau": 3, "sanction": "Mise a pied conservatoire", "delai_prescription_mois": 12},
+              {"niveau": 4, "sanction": "Mise a pied disciplinaire sans solde", "duree_max_jours": 5, "delai_prescription_mois": 12},
+              {"niveau": 5, "sanction": "Mutation d'office", "delai_prescription_mois": 24},
+              {"niveau": 6, "sanction": "Licenciement pour faute grave", "indemnites": false},
+              {"niveau": 7, "sanction": "Licenciement pour faute lourde", "indemnites": false, "poursuites_judiciaires": true}
+            ]
+          }
+        ]
+      }
+    ]
+  },
+
+  "avantages_sociaux": {
+    "ticket_restaurant_tnd_par_jour": {"N1": 20, "N2": 18, "N3": 15, "N4": 12, "N5": 10, "N6": 8},
+    "prime_annuelle_pourcentage": {"N1": "20-30%", "N2": "15-20%", "N3": "10-15%", "N4": "5-10%", "N5": "3-5%", "N6": "Non applicable"},
+    "mutuelle_sante": "Prise en charge a 80% pour le salarie, 50% pour les ayants droit",
+    "formation": "Budget formation individuel de 500 TND/an par salarie (N3 et au-dessus)",
+    "equipement_teletravail": "Ordinateur portable fourni + participation aux frais internet (30 TND/mois)"
+  },
+
+  "contacts_rh": {
+    "drh": "Mme. Fatima Ben Salah - f.bensalah@techsolutions.tn",
+    "charge_recrutement": "M. Karim Touati - k.touati@techsolutions.tn",
+    "ligne_urgence_rh": "+216 71 000 001",
+    "portail_rh": "https://rh.techsolutions.tn"
+  }
+}

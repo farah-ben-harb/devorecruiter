@@ -1,0 +1,649 @@
+{
+  "name": "Unify_CV 2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "unify-cv",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -224,
+        -112
+      ],
+      "id": "8e71dd65-8dea-4011-b704-e78debc6e700",
+      "name": "Webhook1",
+      "webhookId": "${WEBHOOK_ID}"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        4544,
+        -160
+      ],
+      "id": "7dd815a5-1a3d-4c21-aa94-58f20f214492",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Webhook1').item.json.body.driveFileId }}",
+          "mode": "id"
+        },
+        "options": {
+          "binaryPropertyName": "cv_binary"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -16,
+        -112
+      ],
+      "id": "7fe1a2d5-8344-453f-9994-ad9a2eaf5bbc",
+      "name": "Télécharger CV depuis Drive(CVs bruts)1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDriveOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst raw = item.choices ? item.choices[0].message.content : null;\n\nif (!raw) return [{ json: item }];\n\nconst cleanText = raw\n  .replace(/```json/g, '')\n  .replace(/```/g, '')\n  .trim();\n\nconst data = JSON.parse(cleanText);\n\n// Récupérer nom + prenom depuis le webhook (source de vérité)\nconst nomRaw = $('Webhook1').first().json.body.name || '';\nconst prenomRaw = $('Webhook1').first().json.body.firstName || '';\n\nfunction normaliser(str) {\n  return str\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .toLowerCase()\n    .replace(/\\s+/g, '_')\n    .replace(/[^a-z0-9_]/g, '');\n}\n// Expériences\nconst experiencesBlock = (data.experiences || []).map(exp => {\n  let descriptionText = '';\n\n  if (Array.isArray(exp.description)) {\n    descriptionText = exp.description.join('\\n');\n  } else if (typeof exp.description === 'string') {\n    descriptionText = exp.description;\n  } else if (typeof exp.description === 'object' && exp.description !== null) {\n    descriptionText = Object.values(exp.description).join('\\n');\n  }\n\n  const missions = (descriptionText || '')\n    .split('\\n')\n    .filter(line => line.trim() !== '')\n    .map(line => '• ' + line.trim().replace(/^[•\\-\\*]+\\s*/, ''))\n    .join('\\n');\n\n  return `${exp.poste || ''}\n${exp.entreprise || ''} — ${exp.periode || ''}\n\n\n${missions}`;\n}).join('\\n\\n\\n');\n\n// Formations (même ligne pour période)\nconst educationBlock = (data.formations || []).map(f => {\n  return `${f.diplome || ''}\n${f.etablissement || ''} — ${f.periode || ''}`;\n}).join('\\n\\n');\n\n// Compétences\nconst competencesBlock = (data.competences || []).map(c => {\n  if (typeof c === 'string') return '• ' + c;\n  const outils = Array.isArray(c.outils) ? c.outils.join(', ') : (c.outils || '');\n  return '• ' + (c.categorie || '') + ' : ' + outils;\n}).join('\\n');\n\n// Langues\nconst languesBlock = (data.langues || []).map(l => {\n  if (typeof l === 'string') return '• ' + l;\n  return '• ' + (l.langue || '') + ' : ' + (l.niveau || '');\n}).join('\\n');\n\n// Certifications\nconst certificationsBlock = (data.certifications || []).map(c => {\n  if (typeof c === 'string') return '• ' + c;\n  return '• ' + (c.nom || '') + ' — ' + (c.organisme || '') + ' — ' + (c.annee || '');\n}).join('\\n');\n\nreturn [{\n  json: {\n    nom_prenom: `${prenomRaw} ${nomRaw}`.trim(),\n    email: data.email || '',\n    telephone: data.telephone || '',\n    linkedin: data.linkedin || '',\n    github_username: data.github_username || '',\n    profil: data.profil || '',\n    experiences: experiencesBlock,\n    formations: educationBlock,\n    certifications: certificationsBlock,\n    competences: competencesBlock,\n    langues: languesBlock,\n    filename: `${normaliser(nomRaw)}_${normaliser(prenomRaw)}_unifie`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        128
+      ],
+      "id": "22398d54-2e2d-487a-b39d-c8de975ac807",
+      "name": "Parser JSON (DOCX)1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2176,
+        -144
+      ],
+      "id": "56d009b7-4d4b-43a5-96ba-1a4b958925ad",
+      "name": "Fusionner Résultats1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\n// Si déjà parsé (vient de la branche DOCX)\nif (item.nom_prenom !== undefined) return [{ json: item }];\n\n// Sinon parser la réponse Gemini (PDF/Image)\nconst rawText = item.choices ? item.choices[0].message.content : null;\n\nconst cleanText = rawText\n  .replace(/```json/g, '')\n  .replace(/```/g, '')\n  .trim();\n\nconst data = JSON.parse(cleanText);\n// Récupérer nom + prenom depuis le webhook (source de vérité)\nconst nomRaw = $('Webhook1').first().json.body.name || '';\nconst prenomRaw = $('Webhook1').first().json.body.firstName || '';\n\nfunction normaliser(str) {\n  return str\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .toLowerCase()\n    .replace(/\\s+/g, '_')\n    .replace(/[^a-z0-9_]/g, '');\n}\n\n// Expériences (robuste)\nconst experiencesBlock = (data.experiences || []).map(exp => {\n  let descriptionText = '';\n\n  if (Array.isArray(exp.description)) {\n    descriptionText = exp.description.join('\\n');\n  } else if (typeof exp.description === 'string') {\n    descriptionText = exp.description;\n  } else if (typeof exp.description === 'object' && exp.description !== null) {\n    descriptionText = Object.values(exp.description).join('\\n');\n  }\n\n  const missions = (descriptionText || '')\n    .split('\\n')\n    .filter(line => line.trim() !== '')\n    .map(line => `• ${line.trim().replace(/^[•\\-\\*]+\\s*/, '')}`)\n    .join('\\n');\n\n  return `${exp.poste || ''}\n${exp.entreprise || ''} — ${exp.periode || ''}\n\n\n${missions}`;\n}).join('\\n_____________________\\n\\n\\n');\n\n// Formations\nconst educationBlock = (data.formations || []).map(f => {\n  return `${f.diplome || ''}\n${f.etablissement || ''} — ${f.periode || ''}`;\n}).join('\\n\\n');\n\n\n// Compétences\nconst competencesBlock = (data.competences || []).map(c => {\n  if (typeof c === 'string') return `• ${c}`;\n  const outils = Array.isArray(c.outils) \n    ? c.outils.join(', ') \n    : (c.outils || '');\n  return `• ${c.categorie || ''} : ${outils}`;\n}).join('\\n');\n\n// Langues\nconst languesBlock = (data.langues || []).map(l => {\n  if (typeof l === 'string') return `• ${l}`;\n  return `• ${l.langue || ''} : ${l.niveau || ''}`;\n}).join('\\n');\n\n// Certifications\nconst certificationsBlock = (data.certifications || []).map(c => {\n  if (typeof c === 'string') return `• ${c}`;\n  return `• ${c.nom || ''} — ${c.organisme || ''} — ${c.annee || ''}`;\n}).join('\\n');\n\nreturn [{\n  json: {\n    nom_prenom: `${prenomRaw} ${nomRaw}`.trim(),\n    email: data.email || '',\n    telephone: data.telephone || '',\n    linkedin: data.linkedin || '',\n    github_username: data.github_username || '',\n    profil: data.profil || '',\n    experiences: experiencesBlock,\n    formations: educationBlock,\n    certifications: certificationsBlock,\n    competences: competencesBlock,\n    langues: languesBlock,\n    filename: `${normaliser(nomRaw)}_${normaliser(prenomRaw)}_unifie`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2416,
+        -160
+      ],
+      "id": "5b9d7d5e-ba7f-4663-aa46-de3f0dc6e31d",
+      "name": "Parser & Formater JSON1"
+    },
+    {
+      "parameters": {
+        "operation": "copy",
+        "fileId": {
+          "__rl": true,
+          "value": "1eFTqjmo_bAcPYzm6B0d9SAkJOcmhW4Z2uYP1VQ0x41k",
+          "mode": "id"
+        },
+        "name": "={{ $json.filename }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2688,
+        -160
+      ],
+      "id": "b4bc0b76-e3cf-4dcd-b07a-b2959af4492e",
+      "name": "Copier Template Google Docs1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDriveOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $('Copier Template Google Docs1').item.json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "=replaceAll",
+              "text": "=[nom_prenom]",
+              "replaceText": "={{ $('Parser & Formater JSON1').item.json.nom_prenom }}"
+            },
+            {
+              "action": "=replaceAll",
+              "text": "=[email]",
+              "replaceText": "={{ $('Parser & Formater JSON1').item.json.email }}"
+            },
+            {
+              "action": "=replaceAll",
+              "text": "[telephone]",
+              "replaceText": "={{ $('Parser & Formater JSON1').item.json.telephone }}"
+            },
+            {
+              "action": "=replaceAll",
+              "text": "[linkedin]",
+              "replaceText": "={{ $('Parser & Formater JSON1').item.json.linkedin }}"
+            },
+            {
+              "action": "=replaceAll",
+              "text": "[profil]",
+              "replaceText": "={{ $('Parser & Formater JSON1').item.json.profil }}"
+            },
+            {
+              "action": "=replaceAll",
+              "text": "[experiences]",
+              "replaceText": "={{ $('Parser & Formater JSON1').item.json.experiences }}"
+            },
+            {
+              "action": "=replaceAll",
+              "text": "[formations]",
+              "replaceText": "={{ $('Parser & Formater JSON1').item.json.formations }}"
+            },
+            {
+              "action": "=replaceAll",
+              "text": "[certifications]",
+              "replaceText": "={{ $('Parser & Formater JSON1').item.json.certifications }}"
+            },
+            {
+              "action": "=replaceAll",
+              "text": "[competences]",
+              "replaceText": "={{ $('Parser & Formater JSON1').item.json.competences }}"
+            },
+            {
+              "action": "=replaceAll",
+              "text": "[langues]",
+              "replaceText": "={{ $('Parser & Formater JSON1').item.json.langues }}"
+            },
+            {
+              "action": "=replaceAll",
+              "text": "=[github_username]",
+              "replaceText": "={{ $('Parser & Formater JSON1').item.json.github_username }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        3056,
+        -160
+      ],
+      "id": "a1cd817e-8971-4e00-86a7-d7bf90bc8bf7",
+      "name": "Remplir Template1",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDocsOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "aaa43ae1-8127-4f5e-b0ea-042dac8b2e34",
+              "leftValue": "={{ $input.first().binary.cv_binary.mimeType }}",
+              "rightValue": "pdf",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "7bd7b5ed-41a3-4849-9bf9-64cb0d6fa3ec",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        352,
+        -112
+      ],
+      "id": "a15c3160-6054-49d3-8c8f-f74344e46680",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Copier Template Google Docs1').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "=application/pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3424,
+        -160
+      ],
+      "id": "8735d4a5-1259-40d4-b566-80eca863cdd9",
+      "name": "Download file1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDriveOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "={{ $('Parser & Formater JSON1').item.json.filename }}.pdf",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1LPO77CH2g6wsniN09dg82q6jO28U4h1f",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3664,
+        -160
+      ],
+      "id": "daef223e-f9c0-4426-b36f-825ae7f82298",
+      "name": "Upload PDF vers CVs_Unifiés1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDriveOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "deleteFile",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Copier Template Google Docs1').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3968,
+        -160
+      ],
+      "id": "84f08188-029f-40bc-879a-6ce5bf4a9c34",
+      "name": "Supprimer Google Doc temporaire1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDriveOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const upload = $('Upload PDF vers CVs_Unifiés1').first().json;\nconst parsedData = $('Parser & Formater JSON1').first().json;\nreturn [{\n  json: {\n    success: true,\n    document_id: $('Upload PDF vers CVs_Unifiés1').first().json.id,\n    document_name: $('Upload PDF vers CVs_Unifiés1').first().json.name || \"CV_Unifié.pdf\",\n    document_url: $('Upload PDF vers CVs_Unifiés1').first().json.webViewLink,\n    download_url: `https://drive.google.com/uc?id=${$('Upload PDF vers CVs_Unifiés1').first().json.id}&export=download` ,\n  email: parsedData.email || null,\n  github_username: parsedData.github_username || null,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4320,
+        -160
+      ],
+      "id": "858d6dde-19d7-4e40-b879-bd10617d0ffc",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.text;\n\nif (!text || text.trim() === '') {\n  throw new Error('Aucun texte extrait du PDF.');\n}\n\nreturn [{\n  json: {\n    body: JSON.stringify({\n      model: 'openrouter/free',\n      messages: [\n        {\n          role: 'user',\n          content: `Extrait les informations de ce CV et retourne UNIQUEMENT un JSON valide, sans markdown, sans explication :\n{\n  \"nom_prenom\": \"\",\n  \"email\": \"\",\n  \"telephone\": \"\",\n  \"linkedin\": \"\",\n  \"github_username\": \"\",\n  \"profil\": \"\",\n  \"experiences\": [{\"poste\":\"\",\"entreprise\":\"\",\"periode\":\"\",\"description\":\"\"}],\n  \"certifications\": [{\"nom\":\"\",\"organisme\":\"\",\"annee\":\"\"}],\n  \"competences\": [{\"categorie\":\"\",\"outils\":[\"\"]}],\n  \"langues\": [{\"langue\":\"\",\"niveau\":\"\"}],\n  \"formations\": [{\"diplome\":\"\",\"etablissement\":\"\",\"periode\":\"\"}]\n}\n\nCV : ${text}`\n        }\n      ]\n    })\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        -192
+      ],
+      "id": "76c8c749-5880-48a1-acc7-1d5c17707bb7",
+      "name": "Préparer Prompt OpenRouter PDF"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.OPENROUTER_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1472,
+        -192
+      ],
+      "id": "4ea164ef-68eb-4e24-908c-c5320702cca2",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "cv_binary",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        736,
+        -192
+      ],
+      "id": "332d1987-1ac3-4efb-8204-c599daa55db2",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const convertApiSecret = process.env.CONVERTAPI_SECRET;\nconst openRouterApiKey = process.env.OPENROUTER_API_KEY;\n\nif (!convertApiSecret) {\n  throw new Error('Missing CONVERTAPI_SECRET in n8n environment');\n}\n\nif (!openRouterApiKey) {\n  throw new Error('Missing OPENROUTER_API_KEY in n8n environment');\n}\n\nconst binaryBuffer = await this.helpers.getBinaryDataBuffer(0, 'cv_binary');\nconst base64Data = binaryBuffer.toString('base64');\nconst fileName = $input.first().binary.cv_binary.fileName || 'cv.docx';\n\n// Étape 1 : Convertir DOCX en TXT via ConvertAPI\nconst convertResponse = await this.helpers.httpRequest({\n  method: 'POST',\n  url: `https://v2.convertapi.com/convert/docx/to/txt?Secret=${convertApiSecret}`,\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    Parameters: [{\n      Name: 'File',\n      FileValue: { Name: fileName, Data: base64Data }\n    }]\n  })\n});\n\n// Étape 2 : Décoder le texte (ConvertAPI retourne FileData en base64)\nconst fileData = convertResponse.Files[0].FileData;\nconst text = Buffer.from(fileData, 'base64').toString('utf-8');\n\nif (!text || text.trim().length < 50) {\n  throw new Error('Texte extrait trop court : ' + text);\n}\n\n// Étape 3 : Envoyer le texte à OpenRouter\nconst openRouterResponse = await this.helpers.httpRequest({\n  method: 'POST',\n  url: 'https://openrouter.ai/api/v1/chat/completions',\n  headers: {\n    'Content-Type': 'application/json',\n    Authorization: `Bearer ${openRouterApiKey}`\n  },\n  body: JSON.stringify({\n    model: 'openrouter/free',\n    messages: [{\n      role: 'user',\n      content: `Extrait les informations de ce CV et retourne UNIQUEMENT un JSON valide, sans markdown, sans explication :\n{\n  \"nom_prenom\": \"\",\n  \"email\": \"\",\n  \"telephone\": \"\",\n  \"linkedin\": \"\",\n  \"github_username\": \"\",\n  \"profil\": \"\",\n  \"experiences\": [{\"poste\":\"\",\"entreprise\":\"\",\"periode\":\"\",\"description\":\"\"}],\n  \"certifications\": [{\"nom\":\"\",\"organisme\":\"\",\"annee\":\"\"}],\n  \"competences\": [{\"categorie\":\"\",\"outils\":[\"\"]}],\n  \"langues\": [{\"langue\":\"\",\"niveau\":\"\"}],\n  \"formations\": [{\"diplome\":\"\",\"etablissement\":\"\",\"periode\":\"\"}]\n}\n\nCV :\n${text}`\n    }]\n  })\n});\n\nreturn [{ json: openRouterResponse }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        128
+      ],
+      "id": "ae48407b-c613-47ed-b985-1928b63c4443",
+      "name": "DOCX → Résultat"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Télécharger CV depuis Drive(CVs bruts)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Télécharger CV depuis Drive(CVs bruts)1": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser JSON (DOCX)1": {
+      "main": [
+        [
+          {
+            "node": "Fusionner Résultats1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Fusionner Résultats1": {
+      "main": [
+        [
+          {
+            "node": "Parser & Formater JSON1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser & Formater JSON1": {
+      "main": [
+        [
+          {
+            "node": "Copier Template Google Docs1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Copier Template Google Docs1": {
+      "main": [
+        [
+          {
+            "node": "Remplir Template1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remplir Template1": {
+      "main": [
+        [
+          {
+            "node": "Download file1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DOCX → Résultat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file1": {
+      "main": [
+        [
+          {
+            "node": "Upload PDF vers CVs_Unifiés1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload PDF vers CVs_Unifiés1": {
+      "main": [
+        [
+          {
+            "node": "Supprimer Google Doc temporaire1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supprimer Google Doc temporaire1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer Prompt OpenRouter PDF": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Fusionner Résultats1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Préparer Prompt OpenRouter PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DOCX → Résultat": {
+      "main": [
+        [
+          {
+            "node": "Parser JSON (DOCX)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "14c7479e-f24c-4878-a4a4-dbd8644dd0b8",
+  "meta": {
+    "note": "Sanitized metadata"
+  },
+  "id": "4S4Qc7w5wNHrofP6",
+  "tags": [
+    {
+      "updatedAt": "2026-04-15T08:20:18.546Z",
+      "createdAt": "2026-04-15T08:20:18.546Z",
+      "id": "2xsK52IhWRyYRdnk",
+      "name": "Cvs bruts"
+    },
+    {
+      "updatedAt": "2026-04-08T15:05:33.084Z",
+      "createdAt": "2026-04-08T15:05:33.084Z",
+      "id": "HEAsVmPtvZNq0Xay",
+      "name": "RH"
+    },
+    {
+      "updatedAt": "2026-04-15T08:20:18.552Z",
+      "createdAt": "2026-04-15T08:20:18.552Z",
+      "id": "TfbyMT3oary0fbNN",
+      "name": "candidats"
+    },
+    {
+      "updatedAt": "2026-04-15T08:20:18.539Z",
+      "createdAt": "2026-04-15T08:20:18.539Z",
+      "id": "VxHkMDmQ4sBIFYyL",
+      "name": "CVs unifies"
+    },
+    {
+      "updatedAt": "2026-04-08T15:05:33.076Z",
+      "createdAt": "2026-04-08T15:05:33.076Z",
+      "id": "xfEx8wNhod71Td4g",
+      "name": "Automation"
+    }
+  ]
+}

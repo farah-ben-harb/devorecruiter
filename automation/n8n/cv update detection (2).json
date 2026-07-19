@@ -1,0 +1,171 @@
+{
+  "name": "cv update detection",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1ggDV5GRxHV1Ln78IoiKvjMM_rzpjTOAy",
+          "mode": "id"
+        },
+        "event": "fileUpdated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4ba9c7c3-caee-4554-bbb1-f0d64c0ca3bb",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for googleDriveOAuth2Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$env.CV_ALERT_EMAIL || \"${CV_ALERT_EMAIL}\"}}",
+        "subject": "=⚠️ CV modifié : {{$json[\"name\"]}}",
+        "message": "=<!DOCTYPE html>\n<html lang=\"fr\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<style>\n  * { box-sizing: border-box; margin: 0; padding: 0; }\n  body { background: #f5f5f5; font-family: Arial, Helvetica, sans-serif; }\n  .wrap { max-width: 580px; margin: 24px auto; }\n  .header { background: #C0392B; padding: 28px 32px; border-radius: 12px 12px 0 0; }\n  .header-title { color: #ffffff; font-size: 20px; font-weight: 700; }\n  .header-sub { color: #f5c6c1; font-size: 13px; margin-top: 4px; }\n  .body { background: #ffffff; padding: 28px 32px; border-left: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0; }\n  .alert-banner { background: #FDEEEE; border-left: 4px solid #C0392B; border-radius: 0 6px 6px 0; padding: 12px 16px; margin-bottom: 24px; }\n  .alert-banner span { color: #7f1d1d; font-size: 13px; font-weight: 500; }\n  .field-row { display: flex; flex-direction: column; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }\n  .field-row:last-child { border-bottom: none; }\n  .field-label { font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }\n  .field-value { font-size: 14px; color: #1a1a1a; font-weight: 500; }\n  .field-value.mono { font-family: monospace; font-size: 12px; color: #555555; }\n  .cta-wrap { margin-top: 24px; }\n  .cta-btn { display: block; background: #C0392B; color: #ffffff; text-decoration: none; text-align: center; padding: 14px 20px; border-radius: 8px; font-size: 14px; font-weight: 700; }\n  .footer { background: #F9F9F9; padding: 14px 32px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 12px 12px; display: flex; justify-content: space-between; align-items: center; }\n  .footer-left { font-size: 12px; color: #C0392B; font-weight: 500; }\n  .footer-right { font-size: 11px; color: #cccccc; }\n</style>\n</head>\n<body>\n<div class=\"wrap\">\n\n  <!-- En-tête rouge -->\n  <div class=\"header\">\n    <div class=\"header-title\">⚠️ Modification détectée — CV Drive</div>\n    <div class=\"header-sub\">Alerte automatique · Google Drive</div>\n  </div>\n\n  <!-- Corps blanc -->\n  <div class=\"body\">\n\n    <!-- Bannière d'alerte -->\n    <div class=\"alert-banner\">\n      <span>Un fichier CV (.docx) a été modifié dans votre dossier Google Drive surveillé.</span>\n    </div>\n\n    <!-- Champs -->\n    <div class=\"field-row\">\n      <div class=\"field-label\">📄 Nom du fichier</div>\n      <div class=\"field-value\">{{$json[\"name\"]}}</div>\n    </div>\n\n    <div class=\"field-row\">\n      <div class=\"field-label\">📅 Date de modification</div>\n      <div class=\"field-value\">{{$json[\"modifiedTime\"]}}</div>\n    </div>\n\n    <div class=\"field-row\">\n      <div class=\"field-label\"># ID du fichier</div>\n      <div class=\"field-value mono\">{{$json[\"id\"]}}</div>\n    </div>\n\n    <div class=\"field-row\">\n      <div class=\"field-label\">👤 Modifié par</div>\n      <div class=\"field-value\">{{$json[\"lastModifyingUser\"][\"displayName\"]}}</div>\n    </div>\n\n    <!-- Bouton CTA -->\n    <div class=\"cta-wrap\">\n      <a href=\"{{$json['webViewLink']}}\" class=\"cta-btn\">\n        Ouvrir le fichier dans Google Drive →\n      </a>\n    </div>\n\n  </div>\n\n  <!-- Pied de page -->\n  <div class=\"footer\">\n    <div class=\"footer-left\">● Surveillance automatique active</div>\n    <div class=\"footer-right\">Workflow n8n</div>\n  </div>\n\n</div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        464,
+        -16
+      ],
+      "id": "75e27ab3-6319-42bd-9baa-e69d6b48e768",
+      "name": "Send a message",
+      "webhookId": "${WEBHOOK_ID}",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "${N8N_CREDENTIAL_ID}",
+          "name": "Sanitized credential for gmailOAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "089961b9-85f2-41d9-81f4-e1438bc0df73",
+              "leftValue": "={{$json[\"name\"]}}",
+              "rightValue": ".docx",
+              "operator": {
+                "type": "string",
+                "operation": "endsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "9ecc514b-f59c-4337-ac3d-55f3d3d76e05",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.BACKEND_CV_UPDATE_WEBHOOK_URL || \"${BACKEND_CV_UPDATE_WEBHOOK_URL}\"}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-webhook-secret",
+              "value": "={{$env.WEBHOOK_SECRET}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"highlightedFileId\": \"{{$json.id}}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        464,
+        -160
+      ],
+      "id": "3e1d1297-ab97-4358-9cea-f64adf4b1b48",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2c14c3b3-ac09-4c2d-a69e-ef255d71782e",
+  "meta": {
+    "note": "Sanitized metadata"
+  },
+  "id": "4J9NQWrNdliKQAnI",
+  "tags": []
+}

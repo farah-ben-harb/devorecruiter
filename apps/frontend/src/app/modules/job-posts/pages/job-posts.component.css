@@ -1,0 +1,179 @@
+:host {
+  display: block;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Animation d'entrée pour les lignes du tableau */
+tbody tr {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Glassmorphism pour la modale */
+.backdrop-blur-sm {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Custom scrollbar pour la liste Drive */
+.max-h-\[450px\]::-webkit-scrollbar {
+  width: 6px;
+}
+.max-h-\[450px\]::-webkit-scrollbar-track {
+  background: transparent;
+}
+.max-h-\[450px\]::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+/* Empêcher le scroll du body quand une modale est ouverte */
+body.modal-open {
+  overflow: hidden;
+}
+
+:host ::ng-deep body.modal-open {
+  overflow: hidden;
+}
+
+/* Animation modales */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal {
+  animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Animation toast */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Transitions boutons */
+button {
+  transition: all 0.2s ease;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+.checkbox-wrapper-19 {
+  box-sizing: border-box;
+  --background-color: #fff;
+  --checkbox-height: 20px;
+}
+
+@keyframes dothabottomcheck-19 {
+  0% {
+    height: 0;
+  }
+  100% {
+    height: calc(var(--checkbox-height) / 2);
+  }
+}
+@keyframes dothatopcheck-19 {
+  0% {
+    height: 0;
+  }
+  50% {
+    height: 0;
+  }
+  100% {
+    height: calc(var(--checkbox-height) * 1.2);
+  }
+}
+
+.checkbox-wrapper-19 input[type='checkbox'] {
+  display: none;
+}
+
+.checkbox-wrapper-19 .check-box {
+  height: var(--checkbox-height);
+  width: var(--checkbox-height);
+  background-color: transparent;
+  border: calc(var(--checkbox-height) * 0.1) solid #d1d5db;
+  border-radius: 5px;
+  position: relative;
+  display: inline-block;
+  box-sizing: border-box;
+  transition: border-color ease 0.2s;
+  cursor: pointer;
+}
+
+.checkbox-wrapper-19 .check-box::before,
+.checkbox-wrapper-19 .check-box::after {
+  box-sizing: border-box;
+  position: absolute;
+  height: 0;
+  width: calc(var(--checkbox-height) * 0.2);
+  background-color: #e2001a; /* ← rouge Unify */
+  display: inline-block;
+  transform-origin: left top;
+  border-radius: 5px;
+  content: ' ';
+  transition: opacity ease 0.5s;
+}
+
+.checkbox-wrapper-19 .check-box::before {
+  top: calc(var(--checkbox-height) * 0.72);
+  left: calc(var(--checkbox-height) * 0.41);
+  box-shadow: 0 0 0 calc(var(--checkbox-height) * 0.05) var(--background-color);
+  transform: rotate(-135deg);
+}
+
+.checkbox-wrapper-19 .check-box::after {
+  top: calc(var(--checkbox-height) * 0.37);
+  left: calc(var(--checkbox-height) * 0.05);
+  transform: rotate(-45deg);
+}
+
+.checkbox-wrapper-19 input[type='checkbox']:checked + .check-box {
+  border-color: #e2001a;
+}
+
+.checkbox-wrapper-19 input[type='checkbox']:checked + .check-box::after {
+  height: calc(var(--checkbox-height) / 2);
+  animation: dothabottomcheck-19 0.2s ease 0s forwards;
+}
+
+.checkbox-wrapper-19 input[type='checkbox']:checked + .check-box::before {
+  height: calc(var(--checkbox-height) * 1.2);
+  animation: dothatopcheck-19 0.4s ease 0s forwards;
+}
+
+/* Dark mode */
+:host-context(.dark) .checkbox-wrapper-19 .check-box {
+  border-color: #4b5563;
+  --background-color: #111827;
+}

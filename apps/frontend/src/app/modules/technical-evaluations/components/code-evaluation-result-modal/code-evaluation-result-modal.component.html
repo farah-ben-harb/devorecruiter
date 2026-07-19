@@ -1,0 +1,100 @@
+<div
+  class="fixed inset-0 z-100001 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+>
+  <div
+    class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col max-h-[90vh] overflow-y-auto"
+  >
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div class="flex items-center gap-3">
+        <div
+          class="w-9 h-9 flex items-center justify-center rounded-lg bg-violet-100 text-violet-600 text-lg"
+        >
+          🤖
+        </div>
+        <div>
+          <h4 class="font-semibold text-gray-800 text-sm">Résultat évaluation IA</h4>
+          <p class="text-xs text-gray-400">Analyse automatique du code soumis</p>
+        </div>
+      </div>
+      <button
+        (click)="close.emit()"
+        class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400"
+      >
+        ✕
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="px-6 py-5 space-y-4">
+      <!-- Scores -->
+      <div class="grid grid-cols-3 gap-3">
+        @for (
+          item of [
+            { label: 'Global', value: codeEval().globalScore },
+            { label: 'Technique', value: codeEval().technicalScore },
+            { label: 'Qualité', value: codeEval().qualityScore },
+          ];
+          track item.label
+        ) {
+          <div
+            class="flex flex-col items-center p-3 rounded-xl border"
+            [class]="
+              item.value >= 70
+                ? 'border-green-200 bg-green-50'
+                : item.value >= 40
+                  ? 'border-amber-200 bg-amber-50'
+                  : 'border-red-200 bg-red-50'
+            "
+          >
+            <span
+              class="text-2xl font-bold"
+              [class]="
+                item.value >= 70
+                  ? 'text-green-700'
+                  : item.value >= 40
+                    ? 'text-amber-700'
+                    : 'text-red-700'
+              "
+            >
+              {{ item.value }}
+            </span>
+            <span class="text-[10px] text-gray-500 mt-0.5">{{ item.label }}</span>
+          </div>
+        }
+      </div>
+
+      <!-- Recommandation -->
+      <div class="flex items-center justify-center">
+        <span
+          class="px-4 py-1.5 rounded-full text-sm font-semibold"
+          [class]="
+            codeEval().recommendation === 'hire'
+              ? 'bg-green-100 text-green-700'
+              : codeEval().recommendation === 'maybe'
+                ? 'bg-amber-100 text-amber-700'
+                : 'bg-red-100 text-red-700'
+          "
+        >
+          {{
+            codeEval().recommendation === 'hire'
+              ? '✓ Recommandé'
+              : codeEval().recommendation === 'maybe'
+                ? '~ À discuter'
+                : '✗ Non recommandé'
+          }}
+        </span>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex justify-end px-6 py-4 border-t border-gray-100">
+        <button
+          (click)="close.emit()"
+          class="px-4 py-2 rounded-lg text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+        >
+          Fermer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
