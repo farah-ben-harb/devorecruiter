@@ -9,6 +9,7 @@ desktop.ini
 *.swp
 *.swo
 *.orig
+*.log
 
 # Personal tooling and local agent state
 .claude/
@@ -94,4 +95,3 @@ automation/n8n/*.tmp
 **/*.p12
 **/*.kubeconfig
 **/kubeconfig
-
