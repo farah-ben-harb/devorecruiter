@@ -2,6 +2,7 @@ import os
 import re
 import json
 from functools import lru_cache
+from pathlib import Path
 
 import pandas as pd
 
@@ -20,6 +21,8 @@ from langchain_community.vectorstores import Chroma
 from langchain_groq import ChatGroq
 
 router = APIRouter()
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_CHROMA_DIR = BASE_DIR / "MyDB_RH"
 
 # =====================================================
 # Modèle requête
@@ -154,12 +157,16 @@ def load_document(path: str, title: str):
 # Runtime configuration
 # =====================================================
 DOCUMENTS = [
-    {"path": "app/documents/organigramme_techsolutions.xlsx", "title": "Organigramme & Hiérarchie"},
-    {"path": "app/documents/reglement_hierarchie.docx", "title": "Règlement & Hiérarchie"},
-    {"path": "app/documents/reglement_interne.pdf", "title": "Règlement Intérieur"},
-    {"path": "app/documents/techsolutions_data.json", "title": "Données RH Entreprise"},
+    {"path": str(BASE_DIR / "documents" / "organigramme_techsolutions.xlsx"), "title": "Organigramme & Hiérarchie"},
+    {"path": str(BASE_DIR / "documents" / "reglement_hierarchie.docx"), "title": "Règlement & Hiérarchie"},
+    {"path": str(BASE_DIR / "documents" / "reglement_interne.pdf"), "title": "Règlement Intérieur"},
+    {"path": str(BASE_DIR / "documents" / "techsolutions_data.json"), "title": "Données RH Entreprise"},
 ]
-CHROMA_DIR = os.getenv("CHROMA_PERSIST_DIRECTORY") or os.getenv("CHROMA_DIR", "MyDB_RH")
+CHROMA_DIR = Path(
+    os.getenv("CHROMA_PERSIST_DIRECTORY")
+    or os.getenv("CHROMA_DIR")
+    or DEFAULT_CHROMA_DIR
+)
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 chat_history = []
@@ -223,19 +230,20 @@ def get_rag_runtime():
 
     unique_docs = _load_corpus()
     embedding_function = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+    chroma_dir = CHROMA_DIR if CHROMA_DIR.is_absolute() else BASE_DIR / CHROMA_DIR
 
     # Existing persistence is opened in place and is never deleted automatically.
-    if os.path.isdir(CHROMA_DIR) and os.listdir(CHROMA_DIR):
+    if chroma_dir.is_dir() and any(chroma_dir.iterdir()):
         vectorstore = Chroma(
             collection_name="langchain",
             embedding_function=embedding_function,
-            persist_directory=CHROMA_DIR,
+            persist_directory=str(chroma_dir),
         )
     else:
         vectorstore = Chroma.from_documents(
             unique_docs,
             embedding_function,
-            persist_directory=CHROMA_DIR,
+            persist_directory=str(chroma_dir),
         )
 
     retriever = vectorstore.as_retriever(
@@ -250,9 +258,10 @@ def get_rag_runtime():
 
 
 def _readiness_checks() -> dict[str, bool]:
-    chroma_parent = os.path.dirname(os.path.abspath(CHROMA_DIR)) or "."
-    chroma_exists = os.path.isdir(CHROMA_DIR)
-    chroma_parent_writable = os.path.isdir(chroma_parent) and os.access(chroma_parent, os.W_OK)
+    chroma_dir = CHROMA_DIR if CHROMA_DIR.is_absolute() else BASE_DIR / CHROMA_DIR
+    chroma_parent = chroma_dir.parent
+    chroma_exists = chroma_dir.is_dir()
+    chroma_parent_writable = chroma_parent.is_dir() and os.access(chroma_parent, os.W_OK)
 
     return {
         "groq_api_key_configured": bool(os.getenv("GROQ_API_KEY")),

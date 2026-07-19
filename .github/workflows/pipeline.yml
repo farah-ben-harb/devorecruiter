@@ -226,7 +226,7 @@ jobs:
     if: needs.frontend-ci.result == 'success' && needs.frontend-security.result == 'success' && needs.repository-secret-scan.result == 'success' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.all == 'true')
     runs-on: ubuntu-latest
     env:
-      IMAGE_REF: ${{ vars.DOCKERHUB_USERNAME }}/devorecruiter-front:${{ github.sha }}
+      IMAGE_REF: benharbfarah/devorecruiter-front:${{ github.sha }}
       IMAGE_PLATFORM: linux/amd64
     steps:
       - name: Checkout repository
@@ -235,7 +235,7 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0
         with:
-          username: ${{ vars.DOCKERHUB_USERNAME }}
+          username: benharbfarah
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set up Docker Buildx
@@ -449,7 +449,7 @@ jobs:
     if: needs.bff-ci.result == 'success' && needs.bff-security.result == 'success' && needs.repository-secret-scan.result == 'success' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && (needs.detect-changes.outputs.bff == 'true' || needs.detect-changes.outputs.all == 'true')
     runs-on: ubuntu-latest
     env:
-      IMAGE_REF: ${{ vars.DOCKERHUB_USERNAME }}/devorecruiter-api-bff:${{ github.sha }}
+      IMAGE_REF: benharbfarah/devorecruiter-api-bff:${{ github.sha }}
       IMAGE_PLATFORM: linux/amd64
     steps:
       - name: Checkout repository
@@ -458,7 +458,7 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0
         with:
-          username: ${{ vars.DOCKERHUB_USERNAME }}
+          username: benharbfarah
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set up Docker Buildx
@@ -641,7 +641,7 @@ jobs:
     if: needs.fastapi-ci.result == 'success' && needs.fastapi-security.result == 'success' && needs.repository-secret-scan.result == 'success' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && (needs.detect-changes.outputs.fastapi == 'true' || needs.detect-changes.outputs.all == 'true')
     runs-on: ubuntu-latest
     env:
-      IMAGE_REF: ${{ vars.DOCKERHUB_USERNAME }}/devorecruiter-api-back:${{ github.sha }}
+      IMAGE_REF: benharbfarah/devorecruiter-api-back:${{ github.sha }}
       IMAGE_PLATFORM: linux/amd64
     steps:
       - name: Checkout repository
@@ -650,7 +650,7 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0
         with:
-          username: ${{ vars.DOCKERHUB_USERNAME }}
+          username: benharbfarah
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set up Docker Buildx

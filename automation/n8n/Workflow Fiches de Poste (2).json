@@ -249,7 +249,7 @@
           "__rl": true,
           "value": "1ET7Vi9hzRBImH95RIKtGdOkoU0zYe4tWG_qUHxXDl0w",
           "mode": "list",
-          "cachedResultName": "template_fiche_poste",
+          "cachedResultName": "template_fiche_poste"
         },
         "name": "={{ $('Download file').item.binary.data.fileName.replace(/\\.[^.]+$/, '') }}",
         "sameFolder": false,
