@@ -1,4 +1,4 @@
-# DevoRecruiter Monorepo
+# DevoRecruiter 
 
 This repository is the source monorepo for DevoRecruiter. It consolidates the application code, runtime containers, workflow exports, and Terraform source that previously lived in separate repositories.
 
