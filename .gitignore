@@ -86,6 +86,7 @@ automation/n8n/*.tmp
 
 # Generated local documentation and export artifacts
 **/*.pdf
+!apps/api-back/app/documents/reglement_interne.pdf
 
 # Docker and credential material
 **/.docker/
