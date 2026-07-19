@@ -70,15 +70,3 @@ ${{ github.sha }}
 
 No mutable tags are used.
 
-## GitOps boundary
-
-The future GitOps repository is intentionally separate and is not part of this source monorepo. This repository does not contain Helm charts, Argo CD Applications, or desired-state deployment values.
-
-## FastAPI status
-
-The FastAPI service remains runtime-ready, but publication is blocked until the ChromaDB advisory on `chromadb==1.5.9` is resolved. The pipeline preserves that gate instead of weakening it.
-
-## No direct deployment
-
-This repository produces validated source and container images only. It does not deploy applications directly.
-
