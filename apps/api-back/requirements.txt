@@ -1,6 +1,7 @@
 -c constraints.txt
 
-chromadb==1.5.9
+# Stay below 1.0.0 until PYSEC-2026-311 has a patched compatible release.
+chromadb==0.6.3
 docx2txt==0.9
 fastapi==0.139.2
 langchain-community==0.4.2
