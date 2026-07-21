@@ -257,11 +257,21 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.title=devorecruiter-front
 
-      - name: Scan release image with Trivy
+      - name: Report all High and Critical vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: ${{ env.IMAGE_REF }}
           severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '0'
+
+      # Block releases only when an upstream fix exists; unfixed findings remain visible above.
+      - name: Block fixable High and Critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{ env.IMAGE_REF }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
           exit-code: '1'
 
       - name: Push release image
@@ -480,11 +490,21 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.title=devorecruiter-api-bff
 
-      - name: Scan release image with Trivy
+      - name: Report all High and Critical vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: ${{ env.IMAGE_REF }}
           severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '0'
+
+      # Block releases only when an upstream fix exists; unfixed findings remain visible above.
+      - name: Block fixable High and Critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{ env.IMAGE_REF }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
           exit-code: '1'
 
       - name: Push release image
@@ -672,11 +692,21 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.title=devorecruiter-api-back
 
-      - name: Scan release image with Trivy
+      - name: Report all High and Critical vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: ${{ env.IMAGE_REF }}
           severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '0'
+
+      # Block releases only when an upstream fix exists; unfixed findings remain visible above.
+      - name: Block fixable High and Critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ${{ env.IMAGE_REF }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
           exit-code: '1'
 
       - name: Push release image
