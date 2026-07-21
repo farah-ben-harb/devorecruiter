@@ -1,21 +1,26 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from "typeorm";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+} from 'typeorm';
 
-@Entity('conversations')
+@Entity('chatbot_conversations')
 export class Conversation {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
   @Column()
-  sessionId!: string; 
+  sessionId!: string;
 
   @Column()
-  userId!: string;      
+  userId!: string;
 
   @Column('text')
-  userMessage!: string;  
+  userMessage!: string;
 
   @Column('text')
-  assistantResponse!: string; 
+  assistantResponse!: string;
 
   @CreateDateColumn()
   createdAt!: Date;
