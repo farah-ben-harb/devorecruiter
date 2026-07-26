@@ -726,6 +726,133 @@ jobs:
             echo "Size: ${IMAGE_SIZE} bytes"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  gitops-update:
+    needs:
+      - frontend-publish
+      - bff-publish
+      - fastapi-publish
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && (needs.frontend-publish.result == 'success' || needs.bff-publish.result == 'success' || needs.fastapi-publish.result == 'success')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: devorecruiter-gitops-dev
+      cancel-in-progress: false
+    env:
+      GITOPS_REPOSITORY: farah-ben-harb/devorecruiter-gitops
+      GITOPS_BRANCH: main
+      GITOPS_DEPLOY_KEY: ${{ secrets.GITOPS_DEPLOY_KEY }}
+    steps:
+      - name: Validate GitOps deploy key
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${GITOPS_DEPLOY_KEY}" ]]; then
+            echo "::error::Missing GitHub Actions secret GITOPS_DEPLOY_KEY. Create a write-enabled deploy key for farah-ben-harb/devorecruiter-gitops and store the private key in this repository secret."
+            exit 1
+          fi
+
+      - name: Checkout GitOps repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ env.GITOPS_REPOSITORY }}
+          ref: ${{ env.GITOPS_BRANCH }}
+          ssh-key: ${{ env.GITOPS_DEPLOY_KEY }}
+          path: gitops
+
+      - name: Update image tags in GitOps
+        working-directory: gitops
+        shell: bash
+        env:
+          FRONTEND_PUBLISHED: ${{ needs.frontend-publish.result == 'success' }}
+          BFF_PUBLISHED: ${{ needs.bff-publish.result == 'success' }}
+          FASTAPI_PUBLISHED: ${{ needs.fastapi-publish.result == 'success' }}
+        run: |
+          set -euo pipefail
+
+          update_image_tag() {
+            local values_file="$1"
+            local image_tag="$2"
+
+            python3 - "$values_file" "$image_tag" <<'PY'
+          from pathlib import Path
+          import sys
+
+          path = Path(sys.argv[1])
+          image_tag = sys.argv[2]
+          lines = path.read_text(encoding="utf-8").splitlines()
+
+          in_image_block = False
+          changed = False
+
+          for index, line in enumerate(lines):
+              if line == "image:":
+                  in_image_block = True
+                  continue
+
+              if in_image_block and line and not line.startswith((" ", "\t")):
+                  in_image_block = False
+
+              if in_image_block and line.startswith("  tag:"):
+                  lines[index] = f'  tag: "{image_tag}"'
+                  changed = True
+                  break
+
+          if not changed:
+              raise SystemExit(f"Could not find image.tag in {path}")
+
+          path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
+          }
+
+          if [[ "${FRONTEND_PUBLISHED}" == "true" ]]; then
+            update_image_tag "environments/dev/frontend-values.yaml" "${GITHUB_SHA}"
+          fi
+
+          if [[ "${BFF_PUBLISHED}" == "true" ]]; then
+            update_image_tag "environments/dev/api-bff-values.yaml" "${GITHUB_SHA}"
+          fi
+
+          if [[ "${FASTAPI_PUBLISHED}" == "true" ]]; then
+            update_image_tag "environments/dev/api-back-values.yaml" "${GITHUB_SHA}"
+          fi
+
+          git diff -- environments/dev/*-values.yaml
+
+      - name: Commit and push GitOps update
+        working-directory: gitops
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- environments/dev/*-values.yaml; then
+            echo "GitOps image tags are already up to date." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add environments/dev/*-values.yaml
+          git commit -m "chore(gitops): deploy devorecruiter ${GITHUB_SHA}"
+
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:${GITOPS_BRANCH}"; then
+              {
+                echo "GitOps repository: ${GITOPS_REPOSITORY}"
+                echo "Updated image tag: ${GITHUB_SHA}"
+                echo "Frontend publish result: ${{ needs.frontend-publish.result }}"
+                echo "BFF publish result: ${{ needs.bff-publish.result }}"
+                echo "FastAPI publish result: ${{ needs.fastapi-publish.result }}"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+
+            git pull --rebase origin "${GITOPS_BRANCH}"
+            sleep "$((attempt * 5))"
+          done
+
+          echo "::error::Failed to push GitOps update after 3 attempts."
+          exit 1
+
   n8n-validation:
     needs: detect-changes
     if: needs.detect-changes.outputs.n8n == 'true' || needs.detect-changes.outputs.all == 'true'
