@@ -1,19 +1,53 @@
-# DevoRecruiter 
+# DevoRecruiter
 
-This repository is the source monorepo for DevoRecruiter. It consolidates the application code, runtime containers, workflow exports, and Terraform source that previously lived in separate repositories.
+DevoRecruiter is a source monorepo that combines the application code, runtime assets, automation exports, and infrastructure code for the platform.
 
-## Repository layout
+The goal of this repository is separation with traceability:
 
-- `apps/frontend/` - Angular frontend
-- `apps/api-bff/` - NestJS backend-for-frontend
-- `apps/api-back/` - FastAPI service
-- `automation/n8n/` - sanitized n8n workflow exports
-- `infrastructure/terraform/` - infrastructure-as-code source
-- `.github/workflows/pipeline.yml` - the only repository workflow
+- application code stays in one place
+- infrastructure code stays versioned with the platform
+- workflow automation is reviewed like normal code
+- builds are repeatable from a clean checkout
 
-## Local development
+## Architecture
 
-Frontend:
+```mermaid
+flowchart LR
+    Dev[Developer] --> PR[Pull Request]
+    PR --> CI[GitHub Actions Pipeline]
+    CI --> Frontend[Angular Frontend]
+    CI --> BFF[NestJS BFF]
+    CI --> API[FastAPI API]
+    CI --> TF[Terraform]
+    CI --> N8N[n8n Automations]
+    TF --> Infra[Cloud Infrastructure]
+    Frontend --> Deploy[Kubernetes / Runtime Platform]
+    BFF --> Deploy
+    API --> Deploy
+```
+
+## Repository Layout
+
+- `apps/frontend/` Angular frontend
+- `apps/api-bff/` NestJS backend-for-frontend
+- `apps/api-back/` FastAPI service
+- `automation/n8n/` sanitized n8n workflow exports
+- `infrastructure/terraform/` infrastructure-as-code source
+- `.github/workflows/pipeline.yml` primary CI workflow
+
+## Tech Stack
+
+- Frontend: Angular, TypeScript
+- Backend: NestJS, FastAPI
+- Infrastructure: Terraform
+- Automation: n8n
+- CI/CD: GitHub Actions
+
+## Local Development
+
+Use the repository-specific commands for each package or service.
+
+Example frontend workflow:
 
 ```bash
 cd apps/frontend
@@ -23,6 +57,30 @@ npm run typecheck
 npm run test:ci
 npm run build
 ```
+
+## CI/CD
+
+The main workflow should validate the monorepo in a predictable order:
+
+1. lint and typecheck
+2. unit or component tests
+3. build verification
+4. infrastructure validation
+5. deployment-safe packaging
+
+## Branching and Commits
+
+- Branches should be named like `feat/<area>`, `fix/<area>`, `docs/<area>`, or `ci/<area>`
+- Keep commits small and focused
+- Prefer Conventional Commits such as `feat(frontend): add recruiter search panel`
+- Use pull requests for reviewable changes instead of pushing directly to `main`
+
+## Contributing
+
+- Make one logical change per commit
+- Run the relevant checks before opening a PR
+- Keep workflow and infrastructure changes separate from product changes when possible
+- Avoid committing secrets, generated artifacts, or local environment files
 
 BFF:
 
