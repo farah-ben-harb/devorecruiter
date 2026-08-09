@@ -1,4 +1,4 @@
-name: DevoRecruiter Monorepo Pipeline
+name: Devorecruiter pipeline
 
 on:
   workflow_dispatch:
