@@ -46,13 +46,10 @@ export class AuthCallbackComponent implements OnInit {
         const roles = this.authService.getRoles();
         const destination = roles.length > 0 ? '/' : '/signin';
 
-        // The query params emit while the callback route's initial navigation is
-        // still finishing. Starting a second navigation synchronously can leave
-        // Angular on this component indefinitely. Defer it to the next task and
-        // replace the URL so the JWT is removed from the browser history.
-        setTimeout(() => {
-          void this.router.navigateByUrl(destination, { replaceUrl: true });
-        });
+        // A Router navigation started from this callback can remain pending in
+        // the optimized production build. A full replacement reliably boots the
+        // authenticated application and removes the JWT from browser history.
+        globalThis.location.replace(destination);
       } else {
         void this.router.navigateByUrl('/signin', { replaceUrl: true });
       }
