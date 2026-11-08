@@ -17,6 +17,7 @@ resource "azurerm_virtual_network" "this" {
 }
 
 resource "azurerm_subnet" "k3s" {
+  #checkov:skip=CKV2_AZURE_31:Existing single-VM deployment attaches its NSG to the only NIC; moving it to the subnet would change live infrastructure.
   count = var.enable_infrastructure ? 1 : 0
 
   name                 = var.subnet_name
@@ -105,6 +106,7 @@ resource "azurerm_public_ip" "k3s" {
 }
 
 resource "azurerm_network_interface" "k3s" {
+  #checkov:skip=CKV_AZURE_119:The existing K3s VM needs a public IP for remote administration and ingress, restricted by the NIC NSG rules.
   count = var.enable_infrastructure ? 1 : 0
 
   name                = var.network_interface_name

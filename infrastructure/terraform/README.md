@@ -20,6 +20,10 @@ The current module can describe a small Azure Student friendly K3s host:
 
 The default variable `enable_infrastructure = false` prevents accidental planning or creation of resources before the existing Azure estate has been audited. Set it to `true` only after comparing the live Azure resources with this desired model.
 
+## Existing network design
+
+The imported single-VM design attaches the NSG to its network interface and uses a public IP for SSH and application ingress. Checkov's subnet-NSG and no-public-IP policies are suppressed only on those two resources, with reasons recorded inline in `main.tf`. Moving the NSG to the subnet or removing the public IP would change the live topology. Review permitted source CIDRs, NSG rules, and the public exposure before enabling this module; a subnet-level NSG is preferable if more network interfaces are added.
+
 ## State
 
 Local state is acceptable only for early learning and must not be committed.
