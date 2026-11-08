@@ -1,0 +1,29 @@
+enable_infrastructure = false
+
+location                = "spaincentral"
+resource_group_location = "francecentral"
+name_prefix = "devorecruiter-dev"
+resource_group_name         = "rg-devorecruiter-dev"
+vm_name                     = "vm-devorecruiter-dev"
+virtual_network_name        = "vm-devorecruiter-devVNET"
+subnet_name                 = "vm-devorecruiter-devSubnet"
+network_security_group_name = "vm-devorecruiter-devNSG"
+public_ip_name              = "vm-devorecruiter-devPublicIP"
+network_interface_name      = "vm-devorecruiter-devVMNic"
+ip_configuration_name       = "ipconfigvm-devorecruiter-dev"
+
+# Prefer ARM_SUBSCRIPTION_ID for CI. Keep real values in local terraform.tfvars only.
+subscription_id = "00000000-0000-0000-0000-000000000000"
+
+admin_username = "azureuser"
+ssh_public_key = "ssh-rsa REPLACE_WITH_LOCAL_PUBLIC_KEY"
+
+# Keep ingress explicit. Replace with your public IP in CIDR form, for example "203.0.113.10/32".
+allowed_ssh_cidrs     = []
+allowed_http_cidrs    = []
+allowed_k3s_api_cidrs = []
+
+vm_size         = "Standard_B2als_v2"
+os_disk_size_gb = 64
+os_disk_storage_account_type = "Premium_LRS"
+enable_system_assigned_identity = false

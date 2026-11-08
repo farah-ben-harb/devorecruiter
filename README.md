@@ -35,6 +35,19 @@ flowchart LR
 - `infrastructure/terraform/` infrastructure-as-code source
 - `.github/workflows/pipeline.yml` primary CI workflow
 
+## Azure infrastructure
+
+The Terraform configuration in [`infrastructure/terraform/`](infrastructure/terraform/README.md)
+describes the DevoRecruiter development resource group, virtual network, subnet,
+network security group, public IP, network interface, and K3s Linux VM. It is
+disabled by default with `enable_infrastructure = false` so a validation run does
+not create or replace the existing Azure resources. Review the live resources and
+Terraform state before enabling management or applying a plan.
+
+Application deployment state is maintained separately in
+[`devorecruiter-gitops`](https://github.com/farah-ben-harb/devorecruiter-gitops).
+The CI workflow validates and scans Terraform source; it does not apply Terraform.
+
 ## Tech Stack
 
 - Frontend: Angular, TypeScript
