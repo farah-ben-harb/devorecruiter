@@ -16,7 +16,7 @@ export class GoogleCallbackGuard extends AuthGuard('google') {
       const result = await super.canActivate(context);
       return result as boolean;
     } catch (err) {
-      this.logger.warn(`canActivate error: ${err}`);
+      this.logger.warn('OAuth callback rejected during guard activation');
       if (err instanceof Error) {
         req.authError = err.message;
       } else if (typeof err === 'string') {
@@ -35,7 +35,7 @@ export class GoogleCallbackGuard extends AuthGuard('google') {
     const req = context.switchToHttp().getRequest<RequestWithAuthError>();
 
     if (err) {
-      this.logger.warn(`handleRequest error: ${err.message}`);
+      this.logger.warn('OAuth callback rejected during user validation');
       req.authError = err instanceof Error ? err.message : String(err);
       return null;
     }

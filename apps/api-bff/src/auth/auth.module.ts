@@ -9,6 +9,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { UsersModule } from './../users/users.module';
 import { GoogleCallbackGuard } from './guards/google-callback.guard';
+import { CsrfOriginGuard } from './guards/csrf-origin.guard';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { GoogleCallbackGuard } from './guards/google-callback.guard';
     JwtStrategy,
     JwtRefreshStrategy,
     GoogleCallbackGuard,
+    CsrfOriginGuard,
   ],
 })
 export class AuthModule {}

@@ -7,6 +7,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
+import { isAllowedOrigin } from './common/http/origin.util';
 
 function parseOrigins(value: string): string[] {
   return value
@@ -28,9 +29,7 @@ async function bootstrap() {
     origin: (origin, callback) => {
       if (
         !origin ||
-        corsOrigins.includes(origin) ||
-        (isDevelopment &&
-          (origin.includes('localhost') || origin.endsWith('.trycloudflare.com')))
+        isAllowedOrigin(origin, corsOrigins, isDevelopment)
       ) {
         callback(null, true);
       } else {

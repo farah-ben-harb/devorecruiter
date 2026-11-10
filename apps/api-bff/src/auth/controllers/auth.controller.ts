@@ -19,6 +19,7 @@ import { AuthService } from '../services/auth.service';
 import type { CookieOptions, Response } from 'express';
 import { GoogleCallbackGuard } from '../guards/google-callback.guard';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { CsrfOriginGuard } from '../guards/csrf-origin.guard';
 import type {
   AuthToken,
   AuthRequest,
@@ -57,7 +58,11 @@ export class AuthController {
     const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
 
     if (!req.user) {
-      const message = req.authError ?? 'unauthorized';
+      const callbackErrors = new Set(['inactive', 'not_found', 'not_devoteam']);
+      const authError = req.authError;
+      const message = authError && callbackErrors.has(authError)
+        ? authError
+        : 'unauthorized';
       this.logger.warn(`Auth échouée : ${message}`);
       res.redirect(
         `${frontendUrl}/auth/callback?error=${encodeURIComponent(message)}`,
@@ -73,7 +78,7 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @UseGuards(AuthGuard('jwt-refresh'))
+  @UseGuards(CsrfOriginGuard, AuthGuard('jwt-refresh'))
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Rafraîchir le token JWT via le refresh token (cookie)' })
   @ApiResponse({ status: 201, description: 'Nouveau token JWT retourné.', schema: { example: { access_token: 'jwt-access-token-example' } } })
@@ -93,7 +98,7 @@ export class AuthController {
   }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CsrfOriginGuard, JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Déconnecter l\'utilisateur et invalider le refresh token' })
   @ApiResponse({ status: 201, description: 'Déconnexion réussie.', schema: { example: { message: 'Déconnecté avec succès' } } })

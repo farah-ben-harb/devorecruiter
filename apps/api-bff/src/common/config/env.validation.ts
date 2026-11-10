@@ -6,8 +6,21 @@ export const envValidationSchema = Joi.object({
     .default('development'),
   PORT: Joi.number().port().default(3000),
 
-  CORS_ORIGIN: Joi.string().uri().required(),
-  FRONTEND_URL: Joi.string().uri().required(),
+  CORS_ORIGIN: Joi.string()
+    .custom((value, helpers) => {
+      const origins = value.split(',').map((origin: string) => origin.trim());
+      const valid = origins.every((origin: string) => {
+        try {
+          const url = new URL(origin);
+          return url.protocol === 'http:' || url.protocol === 'https:';
+        } catch {
+          return false;
+        }
+      });
+      return valid ? value : helpers.error('string.uri');
+    })
+    .required(),
+  FRONTEND_URL: Joi.string().uri({ scheme: ['http', 'https'] }).required(),
   AUTH_COOKIE_SAMESITE: Joi.string()
     .valid('lax', 'strict', 'none')
     .default('lax'),
@@ -29,7 +42,7 @@ export const envValidationSchema = Joi.object({
 
   GOOGLE_CLIENT_ID: Joi.string().required(),
   GOOGLE_CLIENT_SECRET: Joi.string().required(),
-  GOOGLE_CALLBACK_URL: Joi.string().uri().required(),
+  GOOGLE_CALLBACK_URL: Joi.string().uri({ scheme: ['http', 'https'] }).required(),
   APP_FRONTEND_URL: Joi.string().uri().optional(),
 
   N8N_WEBHOOK_URL: Joi.string().uri().required(),
