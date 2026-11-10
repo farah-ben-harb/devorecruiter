@@ -18,8 +18,6 @@ const mockConfigService = {
     switch (key) {
       case 'NODE_ENV':
         return 'development';
-      case 'AUTH_CALLBACK_INCLUDE_ACCESS_TOKEN_QUERY':
-        return true;
       case 'AUTH_COOKIE_SAMESITE':
         return 'lax';
       case 'AUTH_COOKIE_SECURE':
@@ -51,24 +49,33 @@ describe('AuthController', () => {
   });
 
   describe('refresh()', () => {
-    it('should call refreshToken with userId and refreshToken', async () => {
+    it('should rotate the refresh cookie and return only the access token', async () => {
       const req = {
         user: { userId: 1, refreshToken: 'token' },
       } as unknown as AuthRequest;
+      const res = { cookie: jest.fn() } as unknown as Response;
 
       mockAuthService.refreshToken.mockResolvedValue({
         access_token: 'new_token',
         refresh_token: 'new_refresh',
       });
 
-      const result = await controller.refresh(req);
+      const result = await controller.refresh(req, res);
       expect(mockAuthService.refreshToken).toHaveBeenCalledWith(1, 'token');
-      expect(result).toHaveProperty('access_token');
+      expect(result).toEqual({ access_token: 'new_token' });
+      expect(res.cookie).toHaveBeenCalledWith(
+        'refresh_token',
+        'new_refresh',
+        expect.objectContaining({
+          httpOnly: true,
+          path: '/auth/refresh',
+        }),
+      );
     });
   });
 
   describe('googleCallback()', () => {
-    it('should set refresh token cookie and redirect with query token', async () => {
+    it('should set the refresh cookie and redirect without tokens in the URL', async () => {
       const req = {
         user: {
           id: 1,
@@ -102,14 +109,50 @@ describe('AuthController', () => {
       );
 
       expect(res.redirect).toHaveBeenCalledWith(
-        'http://localhost:4200/auth/callback?token=access-token&refresh_token=refresh-token',
+        'http://localhost:4200/auth/callback',
       );
     });
 
-    it('should redirect without query token when config disables it', async () => {
+    it('marks the refresh cookie as secure in production', async () => {
+      mockConfigService.get = jest.fn((key: string) => {
+        if (key === 'NODE_ENV') return 'production';
+        if (key === 'AUTH_COOKIE_SAMESITE') return 'lax';
+        if (key === 'AUTH_COOKIE_SECURE') return true;
+        return undefined;
+      });
+
+      const req = {
+        user: {
+          id: 1,
+          email: 'user@example.com',
+          firstName: 'John',
+          lastName: 'Doe',
+          picture: '',
+          roles: ['CONSULTANT'],
+        },
+      } as unknown as AuthRequest;
+      const res = {
+        cookie: jest.fn(),
+        redirect: jest.fn(),
+      } as unknown as Response;
+
+      mockAuthService.login.mockResolvedValue({
+        access_token: 'access-token',
+        refresh_token: 'refresh-token',
+      });
+
+      await controller.googleCallback(req, res);
+
+      expect(res.cookie).toHaveBeenCalledWith(
+        'refresh_token',
+        'refresh-token',
+        expect.objectContaining({ secure: true }),
+      );
+    });
+
+    it('never includes tokens in the callback URL', async () => {
       mockConfigService.get = jest.fn((key: string) => {
         if (key === 'NODE_ENV') return 'development';
-        if (key === 'AUTH_CALLBACK_INCLUDE_ACCESS_TOKEN_QUERY') return true;
         if (key === 'AUTH_COOKIE_SAMESITE') return 'lax';
         if (key === 'AUTH_COOKIE_SECURE') return undefined;
         return undefined;
@@ -139,7 +182,7 @@ describe('AuthController', () => {
       await controller.googleCallback(req, res);
 
       expect(res.redirect).toHaveBeenCalledWith(
-        'http://localhost:4200/auth/callback?token=access-token&refresh_token=refresh-token',
+        'http://localhost:4200/auth/callback',
       );
     });
   });
@@ -159,9 +202,10 @@ describe('AuthController', () => {
       const result = await controller.logout(req, res);
 
       expect(mockAuthService.logout).toHaveBeenCalledWith(1);
-      expect(res.clearCookie).toHaveBeenCalledWith('refresh_token', {
-        path: '/auth/refresh',
-      });
+      expect(res.clearCookie).toHaveBeenCalledWith(
+        'refresh_token',
+        expect.objectContaining({ path: '/auth/refresh' }),
+      );
       expect(result).toEqual({ message: 'Déconnecté avec succès' });
     });
   });

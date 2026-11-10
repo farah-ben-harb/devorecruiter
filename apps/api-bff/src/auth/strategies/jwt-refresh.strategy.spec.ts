@@ -33,25 +33,13 @@ const mockPayload: JwtRefreshPayload = {
   roles: [UserRole.CONSULTANT],
 };
 
-const buildRequest = (params?: {
-  headerToken?: string;
-  rawAuthorization?: string;
-  cookieToken?: string;
-}): Request => {
-  const authorization =
-    params?.rawAuthorization ??
-    (params?.headerToken !== undefined
-      ? `Bearer ${params.headerToken}`
-      : undefined);
-
+const buildRequest = (cookieToken?: string): Request => {
   const req: Partial<RequestWithCookies> = {
-    headers: {
-      authorization,
-    },
+    headers: {},
   };
 
-  if (params?.cookieToken !== undefined) {
-    req.cookies = { refresh_token: params.cookieToken };
+  if (cookieToken !== undefined) {
+    req.cookies = { refresh_token: cookieToken };
   }
 
   return req as Request;
@@ -86,8 +74,8 @@ describe('JwtRefreshStrategy', () => {
   // ─── validate ─────────────────────────────────────────────────────────────
 
   describe('validate()', () => {
-    it('should return userId and refreshToken if token is present', () => {
-      const req = buildRequest({ headerToken: 'valid_refresh_token' });
+    it('should return userId and refreshToken when the cookie is present', () => {
+      const req = buildRequest('valid_refresh_token');
 
       const result = strategy.validate(req, mockPayload);
 
@@ -97,7 +85,7 @@ describe('JwtRefreshStrategy', () => {
       });
     });
 
-    it('should throw UnauthorizedException if no authorization header', () => {
+    it('should throw UnauthorizedException if no refresh cookie is present', () => {
       const req = buildRequest();
 
       expect(() => strategy.validate(req, mockPayload)).toThrow(
@@ -105,16 +93,8 @@ describe('JwtRefreshStrategy', () => {
       );
     });
 
-    it('should extract token correctly after removing Bearer prefix', () => {
-      const req = buildRequest({ headerToken: 'my_token_123' });
-
-      const result = strategy.validate(req, mockPayload);
-
-      expect(result).toMatchObject({ refreshToken: 'my_token_123' });
-    });
-
     it('should return correct userId from payload.sub', () => {
-      const req = buildRequest({ headerToken: 'some_token' });
+      const req = buildRequest('some_token');
 
       const result = strategy.validate(req, { ...mockPayload, sub: 42 });
 
@@ -122,7 +102,7 @@ describe('JwtRefreshStrategy', () => {
     });
 
     it('should read refresh token from cookie when present', () => {
-      const req = buildRequest({ cookieToken: 'cookie_refresh_token' });
+      const req = buildRequest('cookie_refresh_token');
 
       const result = strategy.validate(req, mockPayload);
 
@@ -132,51 +112,22 @@ describe('JwtRefreshStrategy', () => {
       });
     });
 
-    it('should prioritize cookie token over authorization header', () => {
-      const req = buildRequest({
-        cookieToken: 'cookie_refresh_token',
-        headerToken: 'header_refresh_token',
-      });
-
-      const result = strategy.validate(req, mockPayload);
-
-      expect(result).toEqual({
-        userId: mockPayload.sub,
-        refreshToken: 'cookie_refresh_token',
-      });
-    });
-
-    it('should fallback to authorization header when cookie token is empty', () => {
-      const req = buildRequest({
-        cookieToken: '',
-        headerToken: 'header_refresh_token',
-      });
-
-      const result = strategy.validate(req, mockPayload);
-
-      expect(result).toEqual({
-        userId: mockPayload.sub,
-        refreshToken: 'header_refresh_token',
-      });
-    });
-
-    it('should throw UnauthorizedException when token is an empty Bearer value', () => {
-      const req = buildRequest({ rawAuthorization: 'Bearer ' });
+    it('should reject an empty refresh cookie', () => {
+      const req = buildRequest('');
 
       expect(() => strategy.validate(req, mockPayload)).toThrow(
         UnauthorizedException,
       );
     });
 
-    it('should keep raw authorization value when Bearer prefix is absent', () => {
-      const req = buildRequest({ rawAuthorization: 'raw_refresh_token' });
+    it('should reject a refresh token sent only in the authorization header', () => {
+      const req = {
+        headers: { authorization: 'Bearer header_refresh_token' },
+      } as Request;
 
-      const result = strategy.validate(req, mockPayload);
-
-      expect(result).toEqual({
-        userId: mockPayload.sub,
-        refreshToken: 'raw_refresh_token',
-      });
+      expect(() => strategy.validate(req, mockPayload)).toThrow(
+        UnauthorizedException,
+      );
     });
   });
 });

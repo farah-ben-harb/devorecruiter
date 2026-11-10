@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { of } from 'rxjs';
 import { authGuard } from './auth.guard';
 import { AuthService } from '@modules/auth/services/auth.service';
 import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
@@ -21,7 +22,7 @@ describe('authGuard', () => {
     authServiceSpy = {
       isLoggedIn: vi.fn(),
       getStorageToken: vi.fn().mockReturnValue(null),
-      refreshToken: vi.fn(),
+      refreshToken: vi.fn().mockReturnValue(of({ access_token: 'access-token' })),
       logout: vi.fn(),
     };
     routerSpy = {
@@ -43,10 +44,11 @@ describe('authGuard', () => {
     expect(result).toBe(true);
   });
 
-  it('should return UrlTree to /signin if user is NOT logged in', () => {
+  it('refreshes the session cookie when the access token is not in memory', () => {
     authServiceSpy.isLoggedIn.mockReturnValue(false);
-    TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
-    expect(routerSpy.createUrlTree).toHaveBeenCalledWith(['/signin']);
+    const result = TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
+    expect(authServiceSpy.refreshToken).toHaveBeenCalled();
+    expect(result).toBeDefined();
   });
 
   it('should NOT call router.navigate directly', () => {
