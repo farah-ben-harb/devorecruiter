@@ -31,16 +31,13 @@ export class JwtRefreshStrategy extends PassportStrategy(
 
   private static extractRefreshToken(req: Request): string | null {
     const cookies = (req as { cookies?: unknown }).cookies;
-    const cookieToken =
+    const refreshToken =
       cookies && typeof cookies === 'object'
         ? (cookies as { refresh_token?: unknown }).refresh_token
         : undefined;
 
-    if (typeof cookieToken === 'string' && cookieToken.length > 0) {
-      return cookieToken;
-    }
-
-    const headerToken = req.headers.authorization?.replace('Bearer ', '');
-    return headerToken || null;
+    return typeof refreshToken === 'string' && refreshToken.length > 0
+      ? refreshToken
+      : null;
   }
 }

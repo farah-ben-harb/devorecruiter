@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { take } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -20,8 +21,7 @@ export class AuthCallbackComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.route.queryParams.subscribe((params) => {
-      const token = params['token'] ? decodeURIComponent(params['token']) : null;
+    this.route.queryParams.pipe(take(1)).subscribe((params) => {
       const error = params['error'];
 
       if (error) {
@@ -41,18 +41,19 @@ export class AuthCallbackComponent implements OnInit {
         return;
       }
 
-      if (token) {
-        this.authService.saveAccessToken(token);
-        const roles = this.authService.getRoles();
-        const destination = roles.length > 0 ? '/' : '/signin';
-
-        // A Router navigation started from this callback can remain pending in
-        // the optimized production build. A full replacement reliably boots the
-        // authenticated application and removes the JWT from browser history.
-        globalThis.location.replace(destination);
-      } else {
-        void this.router.navigateByUrl('/signin', { replaceUrl: true });
-      }
+      this.authService.refreshToken().pipe(take(1)).subscribe({
+        next: () => {
+          const roles = this.authService.getRoles();
+          const destination = roles.length > 0 ? '/' : '/signin';
+          globalThis.location.replace(destination);
+        },
+        error: () => {
+          void this.router.navigate(['/signin'], {
+            queryParams: { error: 'unauthorized' },
+            replaceUrl: true,
+          });
+        },
+      });
     });
   }
 }

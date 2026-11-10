@@ -48,7 +48,7 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleCallbackGuard)
   @ApiOperation({ summary: 'Callback Google OAuth2 après authentification' })
-  @ApiResponse({ status: 302, description: 'Redirection vers le frontend avec le token.' })
+  @ApiResponse({ status: 302, description: 'Redirection vers le frontend après création de session.' })
   @ApiResponse({ status: 302, description: 'Redirection vers le frontend avec une erreur.' })
   async googleCallback(
     @Req() req: AuthRequest,
@@ -65,39 +65,10 @@ export class AuthController {
       return;
     }
 
-    const { access_token, refresh_token } = await this.authService.login(
+    const { refresh_token } = await this.authService.login(
       req.user as GoogleAuthenticatedUser,
     );
-    const isProd = this.configService.get<string>('NODE_ENV') === 'production';
-    const configuredCookieSecure =
-      this.configService.get<boolean>('AUTH_COOKIE_SECURE');
-    const configuredSameSite =
-      this.configService.get<'lax' | 'strict' | 'none'>(
-        'AUTH_COOKIE_SAMESITE',
-      ) ?? 'lax';
-    const secureCookie = configuredCookieSecure ?? isProd;
-    const includeAccessTokenInQuery = this.configService.get<boolean>(
-      'AUTH_CALLBACK_INCLUDE_ACCESS_TOKEN_QUERY',
-    );
-    const resolvedCookieSecure =
-      configuredSameSite === 'none' ? true : secureCookie;
-    const cookieOptions: CookieOptions = {
-      httpOnly: true,
-      secure: resolvedCookieSecure,
-      sameSite: configuredSameSite,
-      path: '/auth/refresh',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    };
-
-    res.cookie('refresh_token', refresh_token, cookieOptions);
-
-    if (includeAccessTokenInQuery) {
-      res.redirect(
-        `${frontendUrl}/auth/callback?token=${encodeURIComponent(access_token)}&refresh_token=${encodeURIComponent(refresh_token)}`,
-      );
-      return;
-    }
-
+    res.cookie('refresh_token', refresh_token, this.getRefreshCookieOptions());
     res.redirect(`${frontendUrl}/auth/callback`);
   }
 
@@ -107,9 +78,18 @@ export class AuthController {
   @ApiOperation({ summary: 'Rafraîchir le token JWT via le refresh token (cookie)' })
   @ApiResponse({ status: 201, description: 'Nouveau token JWT retourné.', schema: { example: { access_token: 'jwt-access-token-example' } } })
   @ApiResponse({ status: 401, description: 'Refresh token invalide ou expiré.' })
-  async refresh(@Req() req: AuthRequest): Promise<AuthToken> {
+  async refresh(
+    @Req() req: AuthRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<Pick<AuthToken, 'access_token'>> {
     const { userId, refreshToken } = req.user as RefreshUser;
-    return this.authService.refreshToken(userId, refreshToken);
+    const tokens = await this.authService.refreshToken(userId, refreshToken);
+    res.cookie(
+      'refresh_token',
+      tokens.refresh_token,
+      this.getRefreshCookieOptions(),
+    );
+    return { access_token: tokens.access_token };
   }
 
   @Post('logout')
@@ -124,7 +104,24 @@ export class AuthController {
   ): Promise<{ message: string }> {
     const user = req.user as User;
     await this.authService.logout(user.id);
-    res.clearCookie('refresh_token', { path: '/auth/refresh' });
+    res.clearCookie('refresh_token', this.getRefreshCookieOptions());
     return { message: 'Déconnecté avec succès' };
+  }
+
+  private getRefreshCookieOptions(): CookieOptions {
+    const isProduction =
+      this.configService.get<string>('NODE_ENV') === 'production';
+    const configuredSecure = this.configService.get<boolean>('AUTH_COOKIE_SECURE');
+    const sameSite =
+      this.configService.get<'lax' | 'strict' | 'none'>('AUTH_COOKIE_SAMESITE') ??
+      'lax';
+
+    return {
+      httpOnly: true,
+      secure: configuredSecure ?? isProduction,
+      sameSite,
+      path: '/auth/refresh',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    };
   }
 }

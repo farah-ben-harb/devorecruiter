@@ -3,7 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { environment } from '@env/environment';
-import { StorageService } from '@core/services/storage.service';
 import { JwtPayload, AuthToken } from '../models/auth.model';
 import { Role } from '@shared/constants/roles.constants';
 
@@ -11,23 +10,20 @@ import { Role } from '@shared/constants/roles.constants';
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly storage = inject(StorageService);
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
+  private accessToken: string | null = null;
 
   saveToken(tokens: AuthToken): void {
-    this.storage.set(environment.tokenKey, tokens.access_token);
-    if (tokens.refresh_token) {
-      this.storage.set(environment.refreshTokenKey, tokens.refresh_token);
-    }
+    this.accessToken = tokens.access_token;
   }
 
   saveAccessToken(accessToken: string): void {
-    this.storage.set(environment.tokenKey, accessToken);
+    this.accessToken = accessToken;
   }
 
   getStorageToken(key: string): string | null {
-    return this.storage.get(key);
+    return key === environment.tokenKey ? this.accessToken : null;
   }
 
   getUser(): JwtPayload | null {
@@ -56,13 +52,8 @@ export class AuthService {
   }
 
   refreshToken(): Observable<AuthToken> {
-    const refreshToken = this.getStorageToken(environment.refreshTokenKey);
-    const options = refreshToken
-      ? { headers: { Authorization: `Bearer ${refreshToken}` }, withCredentials: true }
-      : { withCredentials: true };
-
     return this.http
-      .post<AuthToken>(`${environment.apiUrl}/auth/refresh`, {}, options)
+      .post<AuthToken>(`${environment.apiUrl}/auth/refresh`, {}, { withCredentials: true })
       .pipe(tap((tokens) => this.saveToken(tokens)));
   }
 
@@ -71,7 +62,7 @@ export class AuthService {
   }
 
   logout(): void {
-    const token = this.getStorageToken(environment.tokenKey);
+    const token = this.accessToken;
     if (token) {
       this.http
         .post(
@@ -81,8 +72,7 @@ export class AuthService {
         )
         .subscribe({ error: () => {} });
     }
-    this.storage.remove(environment.tokenKey);
-    this.storage.remove(environment.refreshTokenKey);
+    this.accessToken = null;
     this.router.navigate(['/signin']);
   }
 }

@@ -8,11 +8,14 @@ export const envValidationSchema = Joi.object({
 
   CORS_ORIGIN: Joi.string().uri().required(),
   FRONTEND_URL: Joi.string().uri().required(),
-  AUTH_CALLBACK_INCLUDE_ACCESS_TOKEN_QUERY: Joi.boolean().default(true),
   AUTH_COOKIE_SAMESITE: Joi.string()
     .valid('lax', 'strict', 'none')
     .default('lax'),
-  AUTH_COOKIE_SECURE: Joi.boolean().optional(),
+  AUTH_COOKIE_SECURE: Joi.boolean().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.valid(true).required(),
+    otherwise: Joi.boolean().default(false),
+  }),
 
   DATABASE_HOST: Joi.string().required(),
   DATABASE_PORT: Joi.number().port().required(),
