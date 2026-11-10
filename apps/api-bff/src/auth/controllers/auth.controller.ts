@@ -40,7 +40,9 @@ export class AuthController {
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
-  @ApiOperation({ summary: 'Redirection vers la page de connexion Google OAuth2' })
+  @ApiOperation({
+    summary: 'Redirection vers la page de connexion Google OAuth2',
+  })
   @ApiResponse({ status: 302, description: 'Redirection vers Google OAuth2.' })
   googleLogin(): void {
     return;
@@ -49,8 +51,14 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleCallbackGuard)
   @ApiOperation({ summary: 'Callback Google OAuth2 après authentification' })
-  @ApiResponse({ status: 302, description: 'Redirection vers le frontend après création de session.' })
-  @ApiResponse({ status: 302, description: 'Redirection vers le frontend avec une erreur.' })
+  @ApiResponse({
+    status: 302,
+    description: 'Redirection vers le frontend après création de session.',
+  })
+  @ApiResponse({
+    status: 302,
+    description: 'Redirection vers le frontend avec une erreur.',
+  })
   async googleCallback(
     @Req() req: AuthRequest,
     @Res() res: Response,
@@ -60,9 +68,8 @@ export class AuthController {
     if (!req.user) {
       const callbackErrors = new Set(['inactive', 'not_found', 'not_devoteam']);
       const authError = req.authError;
-      const message = authError && callbackErrors.has(authError)
-        ? authError
-        : 'unauthorized';
+      const message =
+        authError && callbackErrors.has(authError) ? authError : 'unauthorized';
       this.logger.warn(`Auth échouée : ${message}`);
       res.redirect(
         `${frontendUrl}/auth/callback?error=${encodeURIComponent(message)}`,
@@ -80,9 +87,18 @@ export class AuthController {
   @Post('refresh')
   @UseGuards(CsrfOriginGuard, AuthGuard('jwt-refresh'))
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Rafraîchir le token JWT via le refresh token (cookie)' })
-  @ApiResponse({ status: 201, description: 'Nouveau token JWT retourné.', schema: { example: { access_token: 'jwt-access-token-example' } } })
-  @ApiResponse({ status: 401, description: 'Refresh token invalide ou expiré.' })
+  @ApiOperation({
+    summary: 'Rafraîchir le token JWT via le refresh token (cookie)',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Nouveau token JWT retourné.',
+    schema: { example: { access_token: 'jwt-access-token-example' } },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Refresh token invalide ou expiré.',
+  })
   async refresh(
     @Req() req: AuthRequest,
     @Res({ passthrough: true }) res: Response,
@@ -100,8 +116,14 @@ export class AuthController {
   @Post('logout')
   @UseGuards(CsrfOriginGuard, JwtAuthGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Déconnecter l\'utilisateur et invalider le refresh token' })
-  @ApiResponse({ status: 201, description: 'Déconnexion réussie.', schema: { example: { message: 'Déconnecté avec succès' } } })
+  @ApiOperation({
+    summary: "Déconnecter l'utilisateur et invalider le refresh token",
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Déconnexion réussie.',
+    schema: { example: { message: 'Déconnecté avec succès' } },
+  })
   @ApiResponse({ status: 401, description: 'Non autorisé.' })
   async logout(
     @Req() req: AuthRequest,
@@ -116,10 +138,12 @@ export class AuthController {
   private getRefreshCookieOptions(): CookieOptions {
     const isProduction =
       this.configService.get<string>('NODE_ENV') === 'production';
-    const configuredSecure = this.configService.get<boolean>('AUTH_COOKIE_SECURE');
+    const configuredSecure =
+      this.configService.get<boolean>('AUTH_COOKIE_SECURE');
     const sameSite =
-      this.configService.get<'lax' | 'strict' | 'none'>('AUTH_COOKIE_SAMESITE') ??
-      'lax';
+      this.configService.get<'lax' | 'strict' | 'none'>(
+        'AUTH_COOKIE_SAMESITE',
+      ) ?? 'lax';
 
     return {
       httpOnly: true,

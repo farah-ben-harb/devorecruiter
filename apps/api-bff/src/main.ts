@@ -1,4 +1,3 @@
-
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -19,18 +18,20 @@ function parseOrigins(value: string): string[] {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
-  const corsOrigins = parseOrigins(configService.getOrThrow<string>('CORS_ORIGIN'));
+  const corsOrigins = parseOrigins(
+    configService.getOrThrow<string>('CORS_ORIGIN'),
+  );
   const isDevelopment = configService.get<string>('NODE_ENV') === 'development';
 
   app.enableShutdownHooks();
 
   // ✅ 1. CORS en premier — avant tout middleware
   app.enableCors({
-    origin: (origin, callback) => {
-      if (
-        !origin ||
-        isAllowedOrigin(origin, corsOrigins, isDevelopment)
-      ) {
+    origin: (
+      origin: string | undefined,
+      callback: (error: Error | null, allow?: boolean) => void,
+    ) => {
+      if (!origin || isAllowedOrigin(origin, corsOrigins, isDevelopment)) {
         callback(null, true);
       } else {
         callback(new Error(`CORS bloqué pour : ${origin}`));
@@ -38,14 +39,20 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'ngrok-skip-browser-warning',
+    ],
   });
 
   // ✅ 2. Helmet après CORS
-  app.use(helmet({
-    contentSecurityPolicy: false,
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
-  }));
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   // ✅ 3. Reste des middlewares
   app.use(cookieParser());

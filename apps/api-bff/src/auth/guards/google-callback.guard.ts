@@ -41,6 +41,6 @@ export class GoogleCallbackGuard extends AuthGuard('google') {
     }
 
     if (!user) return null;
-    return user as TUser;
+    return user;
   }
 }
