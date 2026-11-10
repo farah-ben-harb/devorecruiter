@@ -54,4 +54,27 @@ describe('AuthCallbackComponent', () => {
       replaceUrl: true,
     });
   });
+
+  it('maps a rejected OAuth callback to sign-in without exchanging a session', () => {
+    const refreshToken = vi.fn();
+    const authService = {
+      refreshToken,
+      getRoles: vi.fn(),
+    };
+    const router = { navigate: vi.fn() };
+    const route = { queryParams: of({ error: 'inactive' }) };
+
+    const component = new AuthCallbackComponent(
+      route as never,
+      authService as never,
+      router as never,
+    );
+
+    component.ngOnInit();
+
+    expect(refreshToken).not.toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith(['/signin'], {
+      queryParams: { error: 'inactive' },
+    });
+  });
 });

@@ -68,7 +68,10 @@ describe('AuthController', () => {
         'new_refresh',
         expect.objectContaining({
           httpOnly: true,
+          sameSite: 'lax',
+          secure: false,
           path: '/auth/refresh',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
         }),
       );
     });
@@ -110,6 +113,19 @@ describe('AuthController', () => {
 
       expect(res.redirect).toHaveBeenCalledWith(
         'http://localhost:4200/auth/callback',
+      );
+    });
+
+    it('uses a safe generic error code for unexpected OAuth failures', async () => {
+      const req = {
+        authError: 'provider error containing sensitive details',
+      } as unknown as AuthRequest;
+      const res = { redirect: jest.fn() } as unknown as Response;
+
+      await controller.googleCallback(req, res);
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        'http://localhost:4200/auth/callback?error=unauthorized',
       );
     });
 
