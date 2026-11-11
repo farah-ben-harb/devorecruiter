@@ -1,4 +1,9 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
@@ -12,8 +17,12 @@ import {
   IRhAssistantService,
   IRagApiResponse,
   ConversationHistoryDto,
-  RagErrorResponse,
+  RagHistoryMessage,
 } from '../interfaces/rh-assistant.interface';
+import { createRagRequestHeaders } from '../security/rag-request-signature';
+
+const MAX_HISTORY_MESSAGES = 6;
+const MAX_HISTORY_CONTENT_LENGTH = 4000;
 
 @Injectable()
 export class RhAssistantService implements IRhAssistantService {
@@ -22,31 +31,53 @@ export class RhAssistantService implements IRhAssistantService {
   constructor(
     private readonly httpService: HttpService,
     private readonly rhAssistantRepository: RhAssistantRepository,
-    private readonly configService: ConfigService,  
+    private readonly configService: ConfigService,
   ) {
     this.fastApiBaseUrl =
       this.configService.get<string>('FASTAPI_BASE_URL') ??
       this.configService.get<string>('RAG_URL')!;
 
     if (!this.fastApiBaseUrl) {
-      throw new Error('FASTAPI_BASE_URL or RAG_URL is not defined in environment variables');
+      throw new Error(
+        'FASTAPI_BASE_URL or RAG_URL is not defined in environment variables',
+      );
     }
   }
 
   async askQuestion(userId: number, dto: QuestionDto): Promise<RhResponseDto> {
-    let conversation = await this.rhAssistantRepository.findActiveConversation(userId);
+    let conversation =
+      await this.rhAssistantRepository.findActiveConversation(userId);
     const isNewConversation = !conversation;
 
     if (isNewConversation) {
-      conversation = await this.rhAssistantRepository.createConversation(userId);
+      conversation =
+        await this.rhAssistantRepository.createConversation(userId);
     }
 
     if (!conversation) {
-      throw new HttpException(
-        'Erreur lors de la création de la conversation',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+      throw new ServiceUnavailableException(
+        'Le service de conversation est temporairement indisponible.',
       );
     }
+
+    const ragInternalSecret = this.configService.get<string>(
+      'RAG_INTERNAL_SECRET',
+    );
+    if (!ragInternalSecret || ragInternalSecret.length < 32) {
+      throw new ServiceUnavailableException(
+        'Le service RAG est temporairement indisponible.',
+      );
+    }
+
+    const history: RagHistoryMessage[] = (conversation.messages ?? [])
+      .filter(
+        (message) => message.role === 'user' || message.role === 'assistant',
+      )
+      .slice(-MAX_HISTORY_MESSAGES)
+      .map((message) => ({
+        role: message.role,
+        content: message.content.slice(0, MAX_HISTORY_CONTENT_LENGTH),
+      }));
 
     // Sauvegarder la question utilisateur
     await this.rhAssistantRepository.saveMessage({
@@ -59,22 +90,32 @@ export class RhAssistantService implements IRhAssistantService {
     let ragResponse: IRagApiResponse;
     try {
       const res = await firstValueFrom(
-        this.httpService.post<IRagApiResponse>(`${this.fastApiBaseUrl}/chat`, {
-          question: dto.question,
-        }),
+        this.httpService.post<IRagApiResponse>(
+          `${this.fastApiBaseUrl}/chat`,
+          {
+            question: dto.question,
+            history,
+          },
+          {
+            headers: createRagRequestHeaders({
+              action: 'chat',
+              question: dto.question,
+              secret: ragInternalSecret,
+              sessionId: String(conversation.id),
+              userId,
+            }),
+          },
+        ),
       );
       ragResponse = res.data;
     } catch (error) {
       if (error instanceof AxiosError) {
-        const responseData = error.response?.data as RagErrorResponse | undefined;
-        throw new HttpException(
-          responseData?.detail ?? 'Erreur de communication avec le service RAG.',
-          error.response?.status ?? HttpStatus.INTERNAL_SERVER_ERROR,
+        throw new BadGatewayException(
+          'Le service RAG est temporairement indisponible.',
         );
       }
-      throw new HttpException(
-        'Erreur inconnue avec le service RAG.',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+      throw new BadGatewayException(
+        'Le service RAG est temporairement indisponible.',
       );
     }
 
@@ -141,10 +182,6 @@ export class RhAssistantService implements IRhAssistantService {
       await this.rhAssistantRepository.closeConversation(conversation.id);
     }
 
-    firstValueFrom(this.httpService.delete(`${this.fastApiBaseUrl}/chat/reset`)).catch(
-      () => {},
-    );
-
     return { message: 'Conversation réinitialisée.' };
   }
 
@@ -180,12 +217,20 @@ export class RhAssistantService implements IRhAssistantService {
   }
 
   async getConversationById(conversationId: number, userId: number) {
-    const messages =
-      await this.rhAssistantRepository.findMessagesByConversation(
-        conversationId,
-      );
+    const conversation = await this.rhAssistantRepository.findConversationById(
+      conversationId,
+      userId,
+    );
 
-    return { conversationId, messages, userId };
+    if (!conversation) {
+      throw new NotFoundException('Conversation non trouvée.');
+    }
+
+    return {
+      conversationId,
+      messages: conversation.messages ?? [],
+      userId,
+    };
   }
 
   async deleteConversation(conversationId: number, userId: number) {
