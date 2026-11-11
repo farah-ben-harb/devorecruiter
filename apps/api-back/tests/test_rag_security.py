@@ -5,6 +5,7 @@ import os
 import tempfile
 import time
 import unittest
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -24,9 +25,19 @@ from app.routes import (
 )
 
 
-def signed_headers(action: str, user_id: int, session_id: str, question: str = ""):
-    timestamp = int(time.time())
-    payload = "\n".join([action, str(timestamp), str(user_id), session_id, question])
+def signed_headers(
+    action: str,
+    user_id: int,
+    session_id: str,
+    question: str = "",
+    timestamp: int | None = None,
+    request_id: str | None = None,
+):
+    timestamp = int(time.time()) if timestamp is None else timestamp
+    request_id = str(uuid.uuid4()) if request_id is None else request_id
+    payload = "\n".join(
+        [action, str(timestamp), str(user_id), session_id, request_id, question]
+    )
     signature = hmac.new(
         TEST_SECRET.encode("utf-8"),
         payload.encode("utf-8"),
@@ -36,6 +47,7 @@ def signed_headers(action: str, user_id: int, session_id: str, question: str = "
         "x-rag-action": action,
         "x-rag-user-id": str(user_id),
         "x-rag-session-id": session_id,
+        "x-rag-request-id": request_id,
         "x-rag-timestamp": str(timestamp),
         "x-rag-signature": signature,
     }
@@ -133,6 +145,45 @@ class RagSecurityTests(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         runtime_mock.assert_not_called()
 
+    def test_chat_rejects_expired_signed_identity(self):
+        expired_timestamp = int(time.time()) - 61
+        runtime = self.make_runtime()
+        with patch("app.routes.get_rag_runtime", return_value=runtime) as runtime_mock:
+            response = self.client.post(
+                "/chat",
+                json={"question": "Question fictive"},
+                headers=signed_headers(
+                    "chat",
+                    7,
+                    "conversation-expired",
+                    "Question fictive",
+                    timestamp=expired_timestamp,
+                ),
+            )
+
+        self.assertEqual(response.status_code, 401)
+        runtime_mock.assert_not_called()
+
+    def test_chat_rejects_replayed_signed_request(self):
+        runtime = self.make_runtime()
+        headers = signed_headers(
+            "chat", 7, "conversation-replay", "Question fictive"
+        )
+        with patch("app.routes.get_rag_runtime", return_value=runtime):
+            first = self.client.post(
+                "/chat",
+                json={"question": "Question fictive"},
+                headers=headers,
+            )
+            replay = self.client.post(
+                "/chat",
+                json={"question": "Question fictive"},
+                headers=headers,
+            )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(replay.status_code, 401)
+
     def test_reset_requires_the_same_internal_authentication(self):
         invalid = self.client.delete("/chat/reset")
         self.assertEqual(invalid.status_code, 401)
@@ -204,7 +255,7 @@ class RagSecurityTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             embedding_function = FakeEmbeddings()
-            Chroma.from_documents(
+            created = Chroma.from_documents(
                 [Document(page_content="document vectoriel fictif")],
                 embedding_function,
                 collection_name="langchain",
@@ -215,7 +266,19 @@ class RagSecurityTests(unittest.TestCase):
                 embedding_function=embedding_function,
                 persist_directory=directory,
             )
-            results = reopened.similarity_search("question vectorielle fictive", k=1)
+            try:
+                results = reopened.similarity_search(
+                    "question vectorielle fictive", k=1
+                )
+            finally:
+                # Chroma 0.6.3 does not expose close(); stop its local system so
+                # Windows can remove the temporary HNSW files deterministically.
+                systems = set()
+                for store in (created, reopened):
+                    system = getattr(getattr(store, "_client", None), "_system", None)
+                    if system is not None and id(system) not in systems:
+                        system.stop()
+                        systems.add(id(system))
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].page_content, "document vectoriel fictif")

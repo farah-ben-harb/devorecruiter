@@ -155,6 +155,9 @@ describe('RhAssistantService', () => {
             'x-rag-action': 'chat',
             'x-rag-user-id': '42',
             'x-rag-session-id': '1',
+            'x-rag-request-id': expect.stringMatching(
+              /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+            ),
             'x-rag-signature': expect.stringMatching(/^[a-f0-9]{64}$/),
           }),
         },

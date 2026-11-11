@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 
 export type RagAction = 'chat' | 'reset';
 
@@ -9,6 +9,7 @@ type RagRequestSignatureInput = {
   question?: string;
   secret: string;
   sessionId: string;
+  requestId?: string;
   timestamp?: number;
   userId: number;
 };
@@ -19,8 +20,9 @@ function canonicalPayload(
   userId: number,
   sessionId: string,
   question: string,
+  requestId: string,
 ): string {
-  return [action, timestamp, userId, sessionId, question].join('\n');
+  return [action, timestamp, userId, sessionId, requestId, question].join('\n');
 }
 
 export function createRagRequestHeaders({
@@ -28,6 +30,7 @@ export function createRagRequestHeaders({
   question = '',
   secret,
   sessionId,
+  requestId = randomUUID(),
   timestamp = Math.floor(Date.now() / 1000),
   userId,
 }: RagRequestSignatureInput): Record<string, string> {
@@ -45,6 +48,7 @@ export function createRagRequestHeaders({
     userId,
     sessionId,
     question,
+    requestId,
   );
   const signature = createHmac('sha256', secret)
     .update(payload, 'utf8')
@@ -54,6 +58,7 @@ export function createRagRequestHeaders({
     'x-rag-action': action,
     'x-rag-user-id': String(userId),
     'x-rag-session-id': sessionId,
+    'x-rag-request-id': requestId,
     'x-rag-timestamp': String(timestamp),
     'x-rag-signature': signature,
   };
