@@ -4,7 +4,10 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ChatOpenAI } from '@langchain/openai';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
-import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
+import {
+  ChatPromptTemplate,
+  MessagesPlaceholder,
+} from '@langchain/core/prompts';
 import { createDbQueryTool, createSearchTool } from '../tools/db-query.tool';
 import { StructuredToolInterface } from '@langchain/core/tools';
 
@@ -14,10 +17,10 @@ import { StructuredToolInterface } from '@langchain/core/tools';
 // llama3-70b-8192 → décommissionné, retiré de la liste
 const GROQ_MODELS = [
   { name: 'meta-llama/llama-4-scout-17b-16e-instruct', tpd: 500_000 },
-  { name: 'llama-3.3-70b-versatile',                   tpd: 100_000 },
-  { name: 'openai/gpt-oss-20b',                        tpd: 500_000 },
-  { name: 'qwen/qwen3-32b',                            tpd: 500_000 },
-  { name: 'llama-3.1-8b-instant',                      tpd: 500_000 }, // dernier recours
+  { name: 'llama-3.3-70b-versatile', tpd: 100_000 },
+  { name: 'openai/gpt-oss-20b', tpd: 500_000 },
+  { name: 'qwen/qwen3-32b', tpd: 500_000 },
+  { name: 'llama-3.1-8b-instant', tpd: 500_000 }, // dernier recours
 ];
 
 @Injectable()
@@ -41,11 +44,15 @@ export class AgentService implements OnModuleInit {
       return;
     }
 
-    this.apiKey  = apiKey;
+    this.apiKey = apiKey;
     this.baseURL = this.configService.get<string>('OPENAI_BASE_URL') ?? '';
 
-    const dbTools    = createDbQueryTool(this.dataSource) as unknown as StructuredToolInterface[];
-    const searchTool = createSearchTool(this.dataSource)  as unknown as StructuredToolInterface;
+    const dbTools = createDbQueryTool(
+      this.dataSource,
+    ) as unknown as StructuredToolInterface[];
+    const searchTool = createSearchTool(
+      this.dataSource,
+    ) as unknown as StructuredToolInterface;
     this.tools = [...dbTools, searchTool];
 
     this.prompt = ChatPromptTemplate.fromMessages([
@@ -56,7 +63,9 @@ export class AgentService implements OnModuleInit {
     ]);
 
     this.logger.log(`Agent initialisé avec ${this.tools.length} tools`);
-    this.logger.log(`Modèle actif : ${GROQ_MODELS[this.currentModelIndex].name}`);
+    this.logger.log(
+      `Modèle actif : ${GROQ_MODELS[this.currentModelIndex].name}`,
+    );
   }
 
   // ── Crée un AgentExecutor avec le modèle donné ────────────────────────────
@@ -76,9 +85,9 @@ export class AgentService implements OnModuleInit {
 
     return new AgentExecutor({
       agent,
-      tools:         this.tools as any,
+      tools: this.tools as any,
       maxIterations: 5,
-      verbose:       false,
+      verbose: false,
     });
   }
 
@@ -89,13 +98,13 @@ export class AgentService implements OnModuleInit {
     }
 
     for (let attempt = 0; attempt < GROQ_MODELS.length; attempt++) {
-      const modelIdx  = (this.currentModelIndex + attempt) % GROQ_MODELS.length;
+      const modelIdx = (this.currentModelIndex + attempt) % GROQ_MODELS.length;
       const modelName = GROQ_MODELS[modelIdx].name;
 
       try {
         const executor = this.createExecutor(modelName);
-        const result   = await executor.invoke({
-          input:        message,
+        const result = await executor.invoke({
+          input: message,
           chat_history: history,
         });
 
@@ -106,28 +115,28 @@ export class AgentService implements OnModuleInit {
         }
 
         return result.output as string;
-
       } catch (err: any) {
         const msg = err?.message ?? '';
 
         // ── Rate limit 429 ────────────────────────────────────────────────
         if (msg.includes('429')) {
           const waitMatch = msg.match(/try again in (\d+)m(\d+)/);
-          const waitMin   = waitMatch ? parseInt(waitMatch[1]) : 0;
-          const waitSec   = waitMatch ? parseInt(waitMatch[2]) : 0;
+          const waitMin = waitMatch ? parseInt(waitMatch[1]) : 0;
+          const waitSec = waitMatch ? parseInt(waitMatch[2]) : 0;
 
           this.logger.warn(
-            `Rate limit sur ${modelName} (attente ${waitMin}m${waitSec}s) → essai du modèle suivant...`
+            `Rate limit sur ${modelName} (attente ${waitMin}m${waitSec}s) → essai du modèle suivant...`,
           );
 
           if (attempt === GROQ_MODELS.length - 1) {
-            const waitDisplay = waitMin > 0
-              ? `${waitMin} min ${waitSec} sec`
-              : `${waitSec} secondes`;
+            const waitDisplay =
+              waitMin > 0
+                ? `${waitMin} min ${waitSec} sec`
+                : `${waitSec} secondes`;
             return `⏳ Tous les modèles sont temporairement saturés. Réessaie dans ${waitDisplay}.`;
           }
 
-          await new Promise(r => setTimeout(r, 500));
+          await new Promise((r) => setTimeout(r, 500));
           continue;
         }
 
@@ -139,14 +148,14 @@ export class AgentService implements OnModuleInit {
           msg.includes('does not exist')
         ) {
           this.logger.warn(
-            `Modèle indisponible ${modelName} → essai du modèle suivant...`
+            `Modèle indisponible ${modelName} → essai du modèle suivant...`,
           );
 
           if (attempt === GROQ_MODELS.length - 1) {
             return `❌ Aucun modèle disponible. Vérifie la liste des modèles Groq actifs.`;
           }
 
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise((r) => setTimeout(r, 300));
           continue;
         }
 
@@ -157,19 +166,19 @@ export class AgentService implements OnModuleInit {
           msg.includes('did not match schema')
         ) {
           this.logger.warn(
-            `Tool call invalide sur ${modelName} → essai du modèle suivant...`
+            `Tool call invalide sur ${modelName} → essai du modèle suivant...`,
           );
 
           if (attempt === GROQ_MODELS.length - 1) {
             return `❌ Impossible de traiter cette requête. Essaie de reformuler ta question.`;
           }
 
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise((r) => setTimeout(r, 300));
           continue;
         }
 
         // ── Autre erreur → logger et remonter ────────────────────────────
-        this.logger.error(`Erreur agent (${modelName}): ${msg}`);
+        this.logger.error('Erreur agent pour le modèle configuré.');
         throw err;
       }
     }
@@ -179,7 +188,7 @@ export class AgentService implements OnModuleInit {
 
   // ── System prompt ─────────────────────────────────────────────────────────
   private getSystemPrompt(): string {
-  return `Tu es l'assistant de DevoRecruiter. Réponds TOUJOURS en appelant un tool.
+    return `Tu es l'assistant de DevoRecruiter. Réponds TOUJOURS en appelant un tool.
 
 TABLES : users, candidates, job_posts, job_offers, technical_evaluations, invitations, candidate_quiz_results, candidate_code_evaluations, resume_evaluation, job_post_evaluation
 
@@ -206,5 +215,5 @@ FORMAT DE RÉPONSE :
 - Tableaux uniquement si plus de 5 résultats ou si l'utilisateur demande explicitement
 - Ne jamais mentionner les noms de champs techniques (quizContent, jobPostId, evaluationId...)
 - Présenter les infos essentielles : entreprise, titre du poste, statut`;
-}
+  }
 }

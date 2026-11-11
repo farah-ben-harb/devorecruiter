@@ -7,13 +7,15 @@ import { MemoryService } from './memory.service';
 import { ChatMessageDto } from '../dtos/chat-message.dto';
 
 function makeAiHistoryEntry(content: string): BaseMessage {
-  return ({
+  return {
     id: ['langchain', 'schema', 'messages', 'AIMessage'],
     kwargs: { content },
-  } as unknown) as BaseMessage;
+  } as unknown as BaseMessage;
 }
 
-function makeChatMessageDto(overrides: Partial<ChatMessageDto> = {}): ChatMessageDto {
+function makeChatMessageDto(
+  overrides: Partial<ChatMessageDto> = {},
+): ChatMessageDto {
   return {
     message: 'Combien de candidats ?',
     sessionId: 'session-1',
@@ -22,7 +24,9 @@ function makeChatMessageDto(overrides: Partial<ChatMessageDto> = {}): ChatMessag
 }
 
 type MockedAgentService = jest.Mocked<Pick<AgentService, 'chat'>>;
-type MockedMemoryService = jest.Mocked<Pick<MemoryService, 'getHistory' | 'addExchange' | 'clearHistory'>>;
+type MockedMemoryService = jest.Mocked<
+  Pick<MemoryService, 'getHistory' | 'addExchange' | 'clearHistory'>
+>;
 
 describe('ChatbotService', () => {
   let service: ChatbotService;
@@ -64,12 +68,21 @@ describe('ChatbotService', () => {
       memoryService.getHistory.mockReturnValue([]);
       agentService.chat.mockResolvedValue('Il y a 42 candidats.');
 
-      const dto = makeChatMessageDto({ message: 'Combien de candidats ?', sessionId: 'session-1' });
-      const result = await service.processMessage(dto);
+      const dto = makeChatMessageDto({
+        message: 'Combien de candidats ?',
+        sessionId: 'session-1',
+      });
+      const result = await service.processMessage(dto, 7);
 
-      expect(agentService.chat).toHaveBeenCalledWith('Combien de candidats ?', []);
+      expect(agentService.chat).toHaveBeenCalledWith(
+        'Combien de candidats ?',
+        [],
+      );
+      expect(memoryService.getHistory).toHaveBeenCalledWith(
+        'user:7:session:session-1',
+      );
       expect(memoryService.addExchange).toHaveBeenCalledWith(
-        'session-1',
+        'user:7:session:session-1',
         'Combien de candidats ?',
         'Il y a 42 candidats.',
       );
@@ -83,12 +96,17 @@ describe('ChatbotService', () => {
 
   describe('processMessage with pronoun resolution', () => {
     it('replaces the pronoun with the last matched name from history', async () => {
-      const history = [makeAiHistoryEntry('Le CV est celui de Wissem Lallahem.')];
+      const history = [
+        makeAiHistoryEntry('Le CV est celui de Wissem Lallahem.'),
+      ];
       memoryService.getHistory.mockReturnValue(history);
       agentService.chat.mockResolvedValue('Son email est wissem@example.com');
 
-      const dto = makeChatMessageDto({ message: 'Quel est son email ?', sessionId: 'session-1' });
-      await service.processMessage(dto);
+      const dto = makeChatMessageDto({
+        message: 'Quel est son email ?',
+        sessionId: 'session-1',
+      });
+      await service.processMessage(dto, 7);
 
       expect(agentService.chat).toHaveBeenCalledWith(
         'Quel est de Wissem Lallahem email ?',
@@ -97,31 +115,40 @@ describe('ChatbotService', () => {
     });
 
     it('saves the ORIGINAL message in memory, not the resolved one', async () => {
-      const history = [makeAiHistoryEntry('Le CV est celui de Wissem Lallahem.')];
+      const history = [
+        makeAiHistoryEntry('Le CV est celui de Wissem Lallahem.'),
+      ];
       memoryService.getHistory.mockReturnValue(history);
       agentService.chat.mockResolvedValue('Son email est wissem@example.com');
 
-      const dto = makeChatMessageDto({ message: 'Quel est son email ?', sessionId: 'session-1' });
-      await service.processMessage(dto);
+      const dto = makeChatMessageDto({
+        message: 'Quel est son email ?',
+        sessionId: 'session-1',
+      });
+      await service.processMessage(dto, 7);
 
       expect(memoryService.addExchange).toHaveBeenCalledWith(
-        'session-1',
+        'user:7:session:session-1',
         'Quel est son email ?',
         'Son email est wissem@example.com',
       );
     });
 
     it('leaves the message unchanged when no name is found in history', async () => {
-      memoryService.getHistory.mockReturnValue([makeAiHistoryEntry('Aucune information trouvée.')]);
+      memoryService.getHistory.mockReturnValue([
+        makeAiHistoryEntry('Aucune information trouvée.'),
+      ]);
       agentService.chat.mockResolvedValue('Je ne sais pas.');
 
-      const dto = makeChatMessageDto({ message: 'Quel est son email ?', sessionId: 'session-1' });
-      await service.processMessage(dto);
+      const dto = makeChatMessageDto({
+        message: 'Quel est son email ?',
+        sessionId: 'session-1',
+      });
+      await service.processMessage(dto, 7);
 
-      expect(agentService.chat).toHaveBeenCalledWith(
-        'Quel est son email ?',
-        [makeAiHistoryEntry('Aucune information trouvée.')],
-      );
+      expect(agentService.chat).toHaveBeenCalledWith('Quel est son email ?', [
+        makeAiHistoryEntry('Aucune information trouvée.'),
+      ]);
     });
   });
 
@@ -129,9 +156,11 @@ describe('ChatbotService', () => {
 
   describe('clearHistory', () => {
     it('delegates to memoryService and returns success', () => {
-      const result = service.clearHistory('session-1');
+      const result = service.clearHistory('session-1', 7);
 
-      expect(memoryService.clearHistory).toHaveBeenCalledWith('session-1');
+      expect(memoryService.clearHistory).toHaveBeenCalledWith(
+        'user:7:session:session-1',
+      );
       expect(result).toEqual({ success: true });
     });
   });

@@ -16,7 +16,10 @@ export interface IRhAssistantRepository {
   // Conversation
   createConversation(userId: number): Promise<RhConversationEntity>;
   findActiveConversation(userId: number): Promise<RhConversationEntity | null>;
-  findConversationById(id: number): Promise<RhConversationEntity | null>;
+  findConversationById(
+    id: number,
+    userId: number,
+  ): Promise<RhConversationEntity | null>;
   closeConversation(conversationId: number): Promise<void>;
 
   // Messages
@@ -40,6 +43,11 @@ export interface IRagApiResponse {
     source: string;
     page: string | number;
   }[];
+}
+
+export interface RagHistoryMessage {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 export interface ConversationHistoryDto {

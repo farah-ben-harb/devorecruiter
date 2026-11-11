@@ -34,9 +34,12 @@ export class RhAssistantRepository implements IRhAssistantRepository {
   }
 
   // ─── Trouver une conversation par ID ────────────
-  async findConversationById(id: number): Promise<RhConversationEntity | null> {
+  async findConversationById(
+    id: number,
+    userId: number,
+  ): Promise<RhConversationEntity | null> {
     return this.convRepo.findOne({
-      where: { id },
+      where: { id, userId },
       relations: ['messages', 'user'],
     });
   }

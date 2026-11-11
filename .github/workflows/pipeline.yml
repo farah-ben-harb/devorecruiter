@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - main
+      - fix/devorecruiter-security
   push:
     branches:
       - main
@@ -554,6 +555,13 @@ jobs:
       - name: Compile application
         working-directory: apps/api-back
         run: python -m compileall app
+
+      - name: Run RAG regression tests
+        working-directory: apps/api-back
+        env:
+          RAG_INTERNAL_SECRET: rag-test-rag-test-rag-test-rag-test-1234-xy
+          ANONYMIZED_TELEMETRY: "False"
+        run: python -m unittest discover -s tests -p 'test_rag_security.py' -v
 
       - name: Validate application imports
         working-directory: apps/api-back

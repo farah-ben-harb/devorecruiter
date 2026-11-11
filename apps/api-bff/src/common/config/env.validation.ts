@@ -54,4 +54,9 @@ export const envValidationSchema = Joi.object({
   N8N_WEBHOOK_URL: Joi.string().uri().required(),
   FASTAPI_BASE_URL: Joi.string().uri().optional(),
   RAG_URL: Joi.string().uri().optional(),
+  RAG_INTERNAL_SECRET: Joi.string().min(32).when('NODE_ENV', {
+    is: 'production',
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
 }).or('FASTAPI_BASE_URL', 'RAG_URL');

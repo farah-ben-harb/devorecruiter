@@ -1,0 +1,8 @@
+title = "DevoRecruiter secret scanning"
+
+[[allowlists]]
+description = "Historical fictional RAG test fixture; never used as a runtime credential"
+regexTarget = "secret"
+regexes = [
+  '''test-rag-internal-secret-1234567890'''
+]
