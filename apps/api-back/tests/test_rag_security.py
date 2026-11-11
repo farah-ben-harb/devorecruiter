@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 
-TEST_SECRET = "test-rag-internal-secret-1234567890"
+TEST_SECRET = "rag-test-rag-test-rag-test-rag-test-1234-xy"
 os.environ.setdefault("RAG_INTERNAL_SECRET", TEST_SECRET)
 os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
 

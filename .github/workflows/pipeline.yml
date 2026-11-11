@@ -559,7 +559,7 @@ jobs:
       - name: Run RAG regression tests
         working-directory: apps/api-back
         env:
-          RAG_INTERNAL_SECRET: test-rag-internal-secret-1234567890
+          RAG_INTERNAL_SECRET: rag-test-rag-test-rag-test-rag-test-1234-xy
           ANONYMIZED_TELEMETRY: "False"
         run: python -m unittest discover -s tests -p 'test_rag_security.py' -v
 

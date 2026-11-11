@@ -40,7 +40,7 @@ type MockRhAssistantRepository = {
 };
 
 describe('RhAssistantService', () => {
-  const ragSecret = 'test-rag-internal-secret-1234567890';
+  const ragSecret = 'rag-test-rag-test-rag-test-rag-test-1234-xy';
   let service: RhAssistantService;
   let httpService: jest.Mocked<HttpService>;
   let repository: MockRhAssistantRepository;
