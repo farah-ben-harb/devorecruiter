@@ -1,4 +1,4 @@
-# Python 3.10-compatible transitive versions validated as a coordinated graph.
+# Python 3.11-compatible transitive versions validated as a coordinated graph.
 huggingface-hub==1.23.0
 langsmith==0.10.5
 numpy==2.2.6
