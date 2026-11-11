@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { HttpService } from '@nestjs/axios';
 import { of, throwError } from 'rxjs';
 import { AxiosError, AxiosResponse } from 'axios';
-import { HttpException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { RhAssistantService } from './rh-assistant.service';
@@ -14,24 +13,37 @@ import { IRagApiResponse } from '../interfaces/rh-assistant.interface';
 
 // ====================== TYPES MOCKS ======================
 type MockRhAssistantRepository = {
-  findActiveConversation: jest.Mock<Promise<RhConversationEntity | null>, [number]>;
+  findActiveConversation: jest.Mock<
+    Promise<RhConversationEntity | null>,
+    [number]
+  >;
+  findConversationById: jest.Mock<
+    Promise<RhConversationEntity | null>,
+    [number, number]
+  >;
   createConversation: jest.Mock<Promise<RhConversationEntity>, [number]>;
   saveMessage: jest.Mock<Promise<RhMessageEntity>, [Partial<RhMessageEntity>]>;
   findMessagesByConversation: jest.Mock<Promise<RhMessageEntity[]>, [number]>;
   closeConversation: jest.Mock<Promise<void>, [number]>;
-  findAllConversationsByUser: jest.Mock<Promise<RhConversationEntity[]>, [number]>;
+  findAllConversationsByUser: jest.Mock<
+    Promise<RhConversationEntity[]>,
+    [number]
+  >;
   countMessagesByUser: jest.Mock<Promise<number>, [number]>;
-  findAllConversationsWithFirstMessage: jest.Mock<Promise<RhConversationEntity[]>, [number]>;
+  findAllConversationsWithFirstMessage: jest.Mock<
+    Promise<RhConversationEntity[]>,
+    [number]
+  >;
   deleteConversation: jest.Mock<Promise<void>, [number, number]>;
   pinConversation: jest.Mock<Promise<void>, [number, number, boolean]>;
   renameConversation: jest.Mock<Promise<void>, [number, number, string]>;
 };
 
 describe('RhAssistantService', () => {
+  const ragSecret = 'rag-test-rag-test-rag-test-rag-test-1234-xy';
   let service: RhAssistantService;
   let httpService: jest.Mocked<HttpService>;
   let repository: MockRhAssistantRepository;
-  let configService: jest.Mocked<ConfigService>;
 
   const mockConversation: RhConversationEntity = {
     id: 1,
@@ -41,7 +53,7 @@ describe('RhAssistantService', () => {
     isPinned: false,
     createdAt: new Date(),
     updatedAt: new Date(),
-    user: {} as any,           // Relation, pas utile dans les tests
+    user: {} as any, // Relation, pas utile dans les tests
     messages: [],
   };
 
@@ -78,6 +90,7 @@ describe('RhAssistantService', () => {
           provide: RhAssistantRepository,
           useValue: {
             findActiveConversation: jest.fn(),
+            findConversationById: jest.fn(),
             createConversation: jest.fn(),
             saveMessage: jest.fn(),
             findMessagesByConversation: jest.fn(),
@@ -93,7 +106,11 @@ describe('RhAssistantService', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn().mockReturnValue('http://localhost:8000'),
+            get: jest.fn((key: string) =>
+              key === 'RAG_INTERNAL_SECRET'
+                ? ragSecret
+                : 'http://localhost:8000',
+            ),
           },
         },
       ],
@@ -102,7 +119,6 @@ describe('RhAssistantService', () => {
     service = module.get<RhAssistantService>(RhAssistantService);
     httpService = module.get(HttpService);
     repository = module.get(RhAssistantRepository) as MockRhAssistantRepository;
-    configService = module.get(ConfigService);
   });
 
   describe('askQuestion', () => {
@@ -110,7 +126,12 @@ describe('RhAssistantService', () => {
       repository.findActiveConversation.mockResolvedValue(mockConversation);
       repository.saveMessage.mockResolvedValue(mockMessage);
       httpService.post.mockReturnValue(
-        of(makeAxiosResponse({ response: 'Réponse de l\'assistant', sources: [] } as IRagApiResponse)),
+        of(
+          makeAxiosResponse({
+            response: "Réponse de l'assistant",
+            sources: [],
+          } as IRagApiResponse),
+        ),
       );
 
       const dto: QuestionDto = { question: 'Quels sont mes congés ?' };
@@ -119,8 +140,28 @@ describe('RhAssistantService', () => {
       expect(repository.findActiveConversation).toHaveBeenCalledWith(42);
       expect(repository.createConversation).not.toHaveBeenCalled();
       expect(repository.renameConversation).not.toHaveBeenCalled();
-      expect(result.response).toBe('Réponse de l\'assistant');
+      expect(result.response).toBe("Réponse de l'assistant");
+      expect(result.sources).toEqual([]);
       expect(result.conversationId).toBe(1);
+
+      expect(httpService.post).toHaveBeenCalledWith(
+        'http://localhost:8000/chat',
+        {
+          question: 'Quels sont mes congés ?',
+          history: [],
+        },
+        {
+          headers: expect.objectContaining({
+            'x-rag-action': 'chat',
+            'x-rag-user-id': '42',
+            'x-rag-session-id': '1',
+            'x-rag-request-id': expect.stringMatching(
+              /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+            ),
+            'x-rag-signature': expect.stringMatching(/^[a-f0-9]{64}$/),
+          }),
+        },
+      );
     });
 
     it('should create new conversation and update title with first question', async () => {
@@ -130,17 +171,24 @@ describe('RhAssistantService', () => {
       repository.renameConversation.mockResolvedValue(undefined);
 
       httpService.post.mockReturnValue(
-        of(makeAxiosResponse({ response: 'Réponse IA', sources: [] } as IRagApiResponse)),
+        of(
+          makeAxiosResponse({
+            response: 'Réponse IA',
+            sources: [],
+          } as IRagApiResponse),
+        ),
       );
 
-      const dto: QuestionDto = { question: 'Quelle est la procédure de télétravail chez nous ?' };
+      const dto: QuestionDto = {
+        question: 'Quelle est la procédure de télétravail chez nous ?',
+      };
       const result = await service.askQuestion(42, dto);
 
       expect(repository.createConversation).toHaveBeenCalledWith(42);
       expect(repository.renameConversation).toHaveBeenCalledWith(
         1,
         42,
-        expect.stringContaining('Quelle est la procédure')
+        expect.stringContaining('Quelle est la procédure'),
       );
       expect(result.conversationId).toBe(1);
     });
@@ -161,7 +209,9 @@ describe('RhAssistantService', () => {
 
       const dto: QuestionDto = { question: 'Test erreur' };
 
-      await expect(service.askQuestion(42, dto)).rejects.toThrow(HttpException);
+      await expect(service.askQuestion(42, dto)).rejects.toThrow(
+        'Le service RAG est temporairement indisponible.',
+      );
     });
   });
 
@@ -177,6 +227,26 @@ describe('RhAssistantService', () => {
     });
   });
 
+  describe('getConversationById', () => {
+    it('loads a conversation only for the authenticated owner', async () => {
+      repository.findConversationById.mockResolvedValue(mockConversation);
+
+      const result = await service.getConversationById(1, 42);
+
+      expect(repository.findConversationById).toHaveBeenCalledWith(1, 42);
+      expect(result.messages).toEqual([]);
+    });
+
+    it('does not expose another user conversation', async () => {
+      repository.findConversationById.mockResolvedValue(null);
+
+      await expect(service.getConversationById(1, 99)).rejects.toThrow(
+        'Conversation non trouvée.',
+      );
+      expect(repository.findConversationById).toHaveBeenCalledWith(1, 99);
+    });
+  });
+
   describe('resetConversation', () => {
     it('should close active conversation', async () => {
       repository.findActiveConversation.mockResolvedValue(mockConversation);
@@ -186,13 +256,16 @@ describe('RhAssistantService', () => {
       const result = await service.resetConversation(42);
 
       expect(repository.closeConversation).toHaveBeenCalledWith(1);
+      expect(httpService.delete).not.toHaveBeenCalled();
       expect(result.message).toBe('Conversation réinitialisée.');
     });
   });
 
   describe('getSidebarHistory', () => {
     it('should return conversations with title fallback', async () => {
-      repository.findAllConversationsWithFirstMessage.mockResolvedValue([mockConversation]);
+      repository.findAllConversationsWithFirstMessage.mockResolvedValue([
+        mockConversation,
+      ]);
 
       const result = await service.getSidebarHistory(42);
 
