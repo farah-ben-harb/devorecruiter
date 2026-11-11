@@ -13,7 +13,7 @@ const nullableNumber = (defaultVal: number) =>
             return isNaN(n) ? defaultVal : n;
         });
 const nullableObject = () =>
-    z.union([z.record(z.any()), z.null(), z.string()])
+    z.union([z.record(z.string(), z.any()), z.null(), z.string()])
         .optional()
         .default({})
         .transform(v => {

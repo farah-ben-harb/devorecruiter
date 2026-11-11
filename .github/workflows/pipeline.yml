@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - fix/devorecruiter-security
+      - fix/devorecruiter-rag-hardening
   push:
     branches:
       - main

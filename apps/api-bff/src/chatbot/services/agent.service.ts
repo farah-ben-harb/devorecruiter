@@ -3,11 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ChatOpenAI } from '@langchain/openai';
-import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
-import {
-  ChatPromptTemplate,
-  MessagesPlaceholder,
-} from '@langchain/core/prompts';
+import { createAgent, toolCallLimitMiddleware } from 'langchain';
+import { HumanMessage, BaseMessage } from '@langchain/core/messages';
 import { createDbQueryTool, createSearchTool } from '../tools/db-query.tool';
 import { StructuredToolInterface } from '@langchain/core/tools';
 
@@ -27,7 +24,6 @@ const GROQ_MODELS = [
 export class AgentService implements OnModuleInit {
   private readonly logger = new Logger(AgentService.name);
   private tools!: StructuredToolInterface[];
-  private prompt!: ChatPromptTemplate;
   private apiKey!: string;
   private baseURL!: string;
   private currentModelIndex = 0;
@@ -55,21 +51,14 @@ export class AgentService implements OnModuleInit {
     ) as unknown as StructuredToolInterface;
     this.tools = [...dbTools, searchTool];
 
-    this.prompt = ChatPromptTemplate.fromMessages([
-      ['system', this.getSystemPrompt()],
-      new MessagesPlaceholder('chat_history'),
-      ['human', '{input}'],
-      new MessagesPlaceholder('agent_scratchpad'),
-    ]);
-
     this.logger.log(`Agent initialisé avec ${this.tools.length} tools`);
     this.logger.log(
       `Modèle actif : ${GROQ_MODELS[this.currentModelIndex].name}`,
     );
   }
 
-  // ── Crée un AgentExecutor avec le modèle donné ────────────────────────────
-  private createExecutor(modelName: string): AgentExecutor {
+  // ── Crée un agent LangChain v1 avec une limite d'appels par exécution ─────
+  private createAgent(modelName: string) {
     const llm = new ChatOpenAI({
       model: modelName,
       temperature: 0,
@@ -77,22 +66,21 @@ export class AgentService implements OnModuleInit {
       configuration: { baseURL: this.baseURL },
     });
 
-    const agent = createToolCallingAgent({
-      llm,
-      tools: this.tools,
-      prompt: this.prompt,
-    });
-
-    return new AgentExecutor({
-      agent,
+    return createAgent({
+      model: llm,
       tools: this.tools as any,
-      maxIterations: 5,
-      verbose: false,
+      systemPrompt: this.getSystemPrompt(),
+      middleware: [
+        toolCallLimitMiddleware({
+          runLimit: 5,
+          exitBehavior: 'continue',
+        }),
+      ],
     });
   }
 
   // ── Chat avec rotation automatique des modèles ────────────────────────────
-  async chat(message: string, history: any[]): Promise<string> {
+  async chat(message: string, history: BaseMessage[]): Promise<string> {
     if (!this.tools) {
       return "L'assistant n'est pas disponible. Vérifiez la configuration OPENAI_API_KEY.";
     }
@@ -102,11 +90,12 @@ export class AgentService implements OnModuleInit {
       const modelName = GROQ_MODELS[modelIdx].name;
 
       try {
-        const executor = this.createExecutor(modelName);
-        const result = await executor.invoke({
-          input: message,
-          chat_history: history,
+        const agent = this.createAgent(modelName);
+        const result = await agent.invoke({
+          messages: [...history, new HumanMessage(message)],
         });
+        const lastMessage = result.messages.at(-1);
+        const output = this.extractMessageText(lastMessage?.content);
 
         // Succès → mémoriser ce modèle pour la prochaine fois
         if (attempt > 0) {
@@ -114,7 +103,7 @@ export class AgentService implements OnModuleInit {
           this.logger.log(`Basculé sur le modèle : ${modelName}`);
         }
 
-        return result.output as string;
+        return output;
       } catch (err: any) {
         const msg = err?.message ?? '';
 
@@ -184,6 +173,22 @@ export class AgentService implements OnModuleInit {
     }
 
     return 'Service temporairement indisponible.';
+  }
+
+  private extractMessageText(content: BaseMessage['content'] | undefined): string {
+    if (typeof content === 'string') return content;
+    if (!Array.isArray(content)) return '';
+
+    return content
+      .map((block) => {
+        if (typeof block === 'string') return block;
+        if (block && typeof block === 'object' && 'text' in block) {
+          return typeof block.text === 'string' ? block.text : '';
+        }
+        return '';
+      })
+      .join('')
+      .trim();
   }
 
   // ── System prompt ─────────────────────────────────────────────────────────
