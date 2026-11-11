@@ -21,7 +21,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from langchain_groq import ChatGroq
 
 router = APIRouter()
@@ -180,6 +180,7 @@ CHROMA_DIR = Path(
 )
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+CHROMA_COLLECTION_NAME = "langchain"
 PROMPT_TEMPLATE = """
 Tu es un assistant RH interne de TECHSOLUTIONS.
 Réponds uniquement à partir du contexte fourni ci-dessous.
@@ -233,6 +234,22 @@ def _load_corpus():
     return list({doc.page_content: doc for doc in all_final}.values())
 
 
+def _open_or_build_vectorstore(unique_docs, embedding_function, chroma_dir):
+    """Open the persisted collection and ingest only when it is empty."""
+    vectorstore = Chroma(
+        collection_name=CHROMA_COLLECTION_NAME,
+        embedding_function=embedding_function,
+        persist_directory=str(chroma_dir),
+    )
+    collection_count = vectorstore._collection.count()
+    if collection_count == 0:
+        vectorstore.add_documents(unique_docs)
+        LOGGER.info("Created the persisted RAG collection with %d chunks", len(unique_docs))
+    else:
+        LOGGER.info("Reused the persisted RAG collection with %d records", collection_count)
+    return vectorstore
+
+
 @lru_cache(maxsize=1)
 def get_rag_runtime():
     api_key = os.getenv("GROQ_API_KEY")
@@ -244,18 +261,11 @@ def get_rag_runtime():
     chroma_dir = CHROMA_DIR if CHROMA_DIR.is_absolute() else BASE_DIR / CHROMA_DIR
 
     # Existing persistence is opened in place and is never deleted automatically.
-    if chroma_dir.is_dir() and any(chroma_dir.iterdir()):
-        vectorstore = Chroma(
-            collection_name="langchain",
-            embedding_function=embedding_function,
-            persist_directory=str(chroma_dir),
-        )
-    else:
-        vectorstore = Chroma.from_documents(
-            unique_docs,
-            embedding_function,
-            persist_directory=str(chroma_dir),
-        )
+    vectorstore = _open_or_build_vectorstore(
+        unique_docs,
+        embedding_function,
+        chroma_dir,
+    )
 
     retriever = vectorstore.as_retriever(
         search_type="mmr",

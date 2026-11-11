@@ -20,6 +20,7 @@ from langchain_core.documents import Document
 
 from app.main import app
 from app.routes import (
+    _open_or_build_vectorstore,
     _select_source_documents,
     load_document,
 )
@@ -242,7 +243,7 @@ class RagSecurityTests(unittest.TestCase):
 
     def test_chroma_collection_can_be_created_and_reopened_with_fake_embeddings(self):
         try:
-            from langchain_community.vectorstores import Chroma
+            from langchain_chroma import Chroma
         except ImportError as error:
             self.skipTest(f"Chroma dependencies unavailable: {error}")
 
@@ -255,24 +256,22 @@ class RagSecurityTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             embedding_function = FakeEmbeddings()
-            created = Chroma.from_documents(
+            created = _open_or_build_vectorstore(
                 [Document(page_content="document vectoriel fictif")],
                 embedding_function,
-                collection_name="langchain",
-                persist_directory=directory,
+                Path(directory),
             )
-            reopened = Chroma(
-                collection_name="langchain",
-                embedding_function=embedding_function,
-                persist_directory=directory,
+            reopened = _open_or_build_vectorstore(
+                [Document(page_content="document ne devant pas etre ajoute")],
+                embedding_function,
+                Path(directory),
             )
             try:
                 results = reopened.similarity_search(
                     "question vectorielle fictive", k=1
                 )
             finally:
-                # Chroma 0.6.3 does not expose close(); stop its local system so
-                # Windows can remove the temporary HNSW files deterministically.
+                # Stop the local system so Windows can remove temporary HNSW files.
                 systems = set()
                 for store in (created, reopened):
                     system = getattr(getattr(store, "_client", None), "_system", None)
@@ -282,6 +281,79 @@ class RagSecurityTests(unittest.TestCase):
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].page_content, "document vectoriel fictif")
+
+    def test_existing_chroma_collection_is_not_reindexed(self):
+        try:
+            from langchain_chroma import Chroma
+        except ImportError as error:
+            self.skipTest(f"Chroma dependencies unavailable: {error}")
+
+        class FakeEmbeddings:
+            def embed_documents(self, texts):
+                return [[float(index), 1.0] for index, _ in enumerate(texts)]
+
+            def embed_query(self, text):
+                return [0.0, 1.0]
+
+        with tempfile.TemporaryDirectory() as directory:
+            embedding_function = FakeEmbeddings()
+            created = _open_or_build_vectorstore(
+                [Document(page_content="document persistant fictif")],
+                embedding_function,
+                Path(directory),
+            )
+            reopened = None
+            try:
+                with patch.object(
+                    Chroma,
+                    "add_documents",
+                    side_effect=AssertionError("reindexing should not occur"),
+                ):
+                    reopened = _open_or_build_vectorstore(
+                        [Document(page_content="second document fictif")],
+                        embedding_function,
+                        Path(directory),
+                    )
+                self.assertEqual(reopened._collection.count(), 1)
+            finally:
+                systems = set()
+                for store in (created, reopened):
+                    system = getattr(getattr(store, "_client", None), "_system", None)
+                    if system is not None and id(system) not in systems:
+                        system.stop()
+                        systems.add(id(system))
+
+    def test_persisted_collection_supports_mmr_retrieval(self):
+        class FakeEmbeddings:
+            def embed_documents(self, texts):
+                return [[float(index), 1.0] for index, _ in enumerate(texts)]
+
+            def embed_query(self, text):
+                return [0.0, 1.0]
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = _open_or_build_vectorstore(
+                [
+                    Document(page_content="document MMR fictif principal"),
+                    Document(page_content="document MMR fictif secondaire"),
+                    Document(page_content="document MMR fictif tertiaire"),
+                ],
+                FakeEmbeddings(),
+                Path(directory),
+            )
+            try:
+                retriever = store.as_retriever(
+                    search_type="mmr",
+                    search_kwargs={"k": 2, "fetch_k": 3, "lambda_mult": 0.5},
+                )
+                results = retriever.invoke("question MMR fictive")
+            finally:
+                system = getattr(getattr(store, "_client", None), "_system", None)
+                if system is not None:
+                    system.stop()
+
+        self.assertEqual(len(results), 2)
+        self.assertTrue(all("document MMR fictif" in doc.page_content for doc in results))
 
 
 if __name__ == "__main__":

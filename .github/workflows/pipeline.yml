@@ -7,6 +7,7 @@ on:
       - main
       - fix/devorecruiter-security
       - fix/devorecruiter-rag-hardening
+      - fix/devorecruiter-langchain-migration
   push:
     branches:
       - main
