@@ -73,14 +73,13 @@ Réponds "it" si la question concerne la technologie :
         .toLowerCase()
         .replace(/[^a-z]/g, '');
 
-      this.logger.log(`Classify "${question.substring(0, 50)}" → raw="${raw}"`);
+      this.logger.log(`Assistant request classified as ${raw}`);
 
       if (raw === 'rh') return 'rh';
       if (raw === 'db') return 'db';
       return 'it';
-
-    } catch (err: any) {
-      this.logger.error(`Classifier error: ${err?.message}`);
+    } catch {
+      this.logger.error('Assistant request classification failed.');
       return 'it';
     }
   }
