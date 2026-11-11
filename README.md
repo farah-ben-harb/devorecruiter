@@ -85,9 +85,27 @@ The consolidated branch has validated:
 - ChromaDB collection reopening from a fictional legacy `0.6.3` fixture under
   ChromaDB `1.5.9`.
 
-The current FastAPI security gate remains intentionally visible while ChromaDB
-advisories have no fixed release in the installed line. `filelock` is being
-validated separately on Python 3.11 with its published security release.
+The current FastAPI security gate remains intentionally visible for five
+ChromaDB advisories. `filelock` is fixed at `4.2.10` by the Python 3.11 runtime
+upgrade and no longer appears in the CI audit.
+
+### ChromaDB Risk Decision
+
+The current application uses ChromaDB `1.5.9` through the LangChain wrapper and
+does not start or expose a Chroma HTTP server. The remaining advisories are
+`PYSEC-2026-311` (critical pre-authentication code injection),
+`PYSEC-2026-3813` (cross-tenant access), `PYSEC-2026-3814` (authenticated code
+injection), and `PYSEC-2026-3815` (authorization scope); the first advisory is
+reported twice by the scanner. The advisory database lists `1.5.9` as affected
+and no fixed version is available in the current Chroma release line.
+
+The explicit interim decision is **maintain with conditions, not accept as
+security-clean**: keep Chroma embedded behind FastAPI, expose FastAPI only to
+the authenticated BFF, keep the RAG HMAC and replay checks enabled, do not
+accept remote model repositories or `trust_remote_code` from requests, keep
+the Chroma volume private, and block direct external access with Kubernetes
+NetworkPolicies. Before production or any standalone Chroma server, replace or
+upgrade the vector-store component and repeat the data migration tests.
 
 ## Local Development
 
