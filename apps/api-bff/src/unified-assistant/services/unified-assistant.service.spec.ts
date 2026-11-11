@@ -11,9 +11,15 @@ import { RhResponseDto } from '../../rh-assistant/dtos/response.dto';
 
 // Types we don't have exact source for: pull from the real class signatures
 type ChatbotProcessInput = Parameters<ChatbotService['processMessage']>[0];
-type ChatbotProcessOutput = Awaited<ReturnType<ChatbotService['processMessage']>>;
-type RhSidebarHistory = Awaited<ReturnType<RhAssistantService['getSidebarHistory']>>;
-type RhConversationById = Awaited<ReturnType<RhAssistantService['getConversationById']>>;
+type ChatbotProcessOutput = Awaited<
+  ReturnType<ChatbotService['processMessage']>
+>;
+type RhSidebarHistory = Awaited<
+  ReturnType<RhAssistantService['getSidebarHistory']>
+>;
+type RhConversationById = Awaited<
+  ReturnType<RhAssistantService['getConversationById']>
+>;
 type RhStats = Awaited<ReturnType<RhAssistantService['getStats']>>;
 
 // Helpers
@@ -26,7 +32,9 @@ function makeSendChatDto(overrides: Partial<SendChatDto> = {}): SendChatDto {
   };
 }
 
-function makeConversationEntity(overrides: Partial<ConversationEntity> = {}): ConversationEntity {
+function makeConversationEntity(
+  overrides: Partial<ConversationEntity> = {},
+): ConversationEntity {
   return {
     id: 'conv-1',
     title: 'Nouvelle conversation',
@@ -163,7 +171,9 @@ describe('UnifiedAssistantService', () => {
 
       const result = await service.classify('Comment utiliser Docker ?');
 
-      expect(classifierService.classify).toHaveBeenCalledWith('Comment utiliser Docker ?');
+      expect(classifierService.classify).toHaveBeenCalledWith(
+        'Comment utiliser Docker ?',
+      );
       expect(result).toBe('it');
     });
   });
@@ -187,7 +197,10 @@ describe('UnifiedAssistantService', () => {
         message: 'Comment configurer Docker ?',
         sessionId: 'conv-1',
       };
-      expect(chatbotService.processMessage).toHaveBeenCalledWith(expectedInput);
+      expect(chatbotService.processMessage).toHaveBeenCalledWith(
+        expectedInput,
+        7,
+      );
       expect(result).toEqual({
         content: 'Il y a 12 candidats.',
         mode: 'db',
@@ -208,11 +221,14 @@ describe('UnifiedAssistantService', () => {
 
       expect(chatbotService.processMessage).toHaveBeenCalledWith(
         expect.objectContaining({ sessionId: 'user-7' }),
+        7,
       );
     });
 
     it('routes to rhAssistantService when mode is rh', async () => {
-      const dto = makeSendChatDto({ messages: [{ role: 'user', content: 'Combien de jours de congés ?' }] });
+      const dto = makeSendChatDto({
+        messages: [{ role: 'user', content: 'Combien de jours de congés ?' }],
+      });
       classifierService.classify.mockResolvedValue('rh');
       const rhResponse = makeRhResponse();
       rhAssistantService.askQuestion.mockResolvedValue(rhResponse);
@@ -233,7 +249,10 @@ describe('UnifiedAssistantService', () => {
     it('routes to assistanceService when mode is it', async () => {
       const dto = makeSendChatDto();
       classifierService.classify.mockResolvedValue('it');
-      assistanceService.chat.mockResolvedValue({ content: 'Utilise docker-compose.', title: 'Docker Setup' });
+      assistanceService.chat.mockResolvedValue({
+        content: 'Utilise docker-compose.',
+        title: 'Docker Setup',
+      });
 
       const result = await service.chat(dto, 7);
 
@@ -258,7 +277,9 @@ describe('UnifiedAssistantService', () => {
 
       await service.chat(dto, 7);
 
-      expect(classifierService.classify).toHaveBeenCalledWith('Deuxième message');
+      expect(classifierService.classify).toHaveBeenCalledWith(
+        'Deuxième message',
+      );
     });
   });
 
@@ -326,7 +347,9 @@ describe('UnifiedAssistantService', () => {
       classifierService.classify.mockResolvedValue('it');
       const newConv = makeConversationEntity({ id: 'conv-new' });
       assistanceService.createConversation.mockResolvedValue(newConv);
-      assistanceService.chatStream.mockImplementation(() => makeAsyncEvents([{ done: true }]));
+      assistanceService.chatStream.mockImplementation(() =>
+        makeAsyncEvents([{ done: true }]),
+      );
 
       await collectStream(service.chatStream(dto, 7));
 
@@ -347,7 +370,9 @@ describe('UnifiedAssistantService', () => {
       assistanceService.getMessages.mockRejectedValue(new Error('not found'));
       const newConv = makeConversationEntity({ id: 'conv-new' });
       assistanceService.createConversation.mockResolvedValue(newConv);
-      assistanceService.chatStream.mockImplementation(() => makeAsyncEvents([{ done: true }]));
+      assistanceService.chatStream.mockImplementation(() =>
+        makeAsyncEvents([{ done: true }]),
+      );
 
       await collectStream(service.chatStream(dto, 7));
 
@@ -391,11 +416,17 @@ describe('UnifiedAssistantService', () => {
 
     it('updateConversation delegates to assistanceService', () => {
       const dto = { title: 'Titre modifié' };
-      assistanceService.updateConversation.mockResolvedValue(makeConversationEntity());
+      assistanceService.updateConversation.mockResolvedValue(
+        makeConversationEntity(),
+      );
 
       service.updateConversation('conv-1', dto, 7);
 
-      expect(assistanceService.updateConversation).toHaveBeenCalledWith('conv-1', dto, 7);
+      expect(assistanceService.updateConversation).toHaveBeenCalledWith(
+        'conv-1',
+        dto,
+        7,
+      );
     });
 
     it('deleteConversation delegates to assistanceService', () => {
@@ -403,7 +434,10 @@ describe('UnifiedAssistantService', () => {
 
       service.deleteConversation('conv-1', 7);
 
-      expect(assistanceService.deleteConversation).toHaveBeenCalledWith('conv-1', 7);
+      expect(assistanceService.deleteConversation).toHaveBeenCalledWith(
+        'conv-1',
+        7,
+      );
     });
 
     it('generateTitle delegates to assistanceService', () => {
@@ -411,7 +445,9 @@ describe('UnifiedAssistantService', () => {
 
       service.generateTitle('Comment configurer Docker ?');
 
-      expect(assistanceService.generateTitle).toHaveBeenCalledWith('Comment configurer Docker ?');
+      expect(assistanceService.generateTitle).toHaveBeenCalledWith(
+        'Comment configurer Docker ?',
+      );
     });
   });
 
@@ -442,7 +478,11 @@ describe('UnifiedAssistantService', () => {
     });
 
     it('getRhConversationById delegates to rhAssistantService', () => {
-      const conv: RhConversationById = { conversationId: 5, messages: [], userId: 7 };
+      const conv: RhConversationById = {
+        conversationId: 5,
+        messages: [],
+        userId: 7,
+      };
       rhAssistantService.getConversationById.mockResolvedValue(conv);
 
       service.getRhConversationById(5, 7);
@@ -451,7 +491,9 @@ describe('UnifiedAssistantService', () => {
     });
 
     it('deleteRhConversation delegates to rhAssistantService', () => {
-      rhAssistantService.deleteConversation.mockResolvedValue({ message: 'Conversation supprimée.' });
+      rhAssistantService.deleteConversation.mockResolvedValue({
+        message: 'Conversation supprimée.',
+      });
 
       service.deleteRhConversation(5, 7);
 
@@ -459,23 +501,37 @@ describe('UnifiedAssistantService', () => {
     });
 
     it('pinRhConversation delegates to rhAssistantService', () => {
-      rhAssistantService.pinConversation.mockResolvedValue({ message: 'Conversation épinglée.' });
+      rhAssistantService.pinConversation.mockResolvedValue({
+        message: 'Conversation épinglée.',
+      });
 
       service.pinRhConversation(5, 7, true);
 
-      expect(rhAssistantService.pinConversation).toHaveBeenCalledWith(5, 7, true);
+      expect(rhAssistantService.pinConversation).toHaveBeenCalledWith(
+        5,
+        7,
+        true,
+      );
     });
 
     it('renameRhConversation delegates to rhAssistantService', () => {
-      rhAssistantService.renameConversation.mockResolvedValue({ message: 'Conversation renommée.' });
+      rhAssistantService.renameConversation.mockResolvedValue({
+        message: 'Conversation renommée.',
+      });
 
       service.renameRhConversation(5, 7, 'Nouveau titre');
 
-      expect(rhAssistantService.renameConversation).toHaveBeenCalledWith(5, 7, 'Nouveau titre');
+      expect(rhAssistantService.renameConversation).toHaveBeenCalledWith(
+        5,
+        7,
+        'Nouveau titre',
+      );
     });
 
     it('resetRhConversation delegates to rhAssistantService', () => {
-      rhAssistantService.resetConversation.mockResolvedValue({ message: 'Conversation réinitialisée.' });
+      rhAssistantService.resetConversation.mockResolvedValue({
+        message: 'Conversation réinitialisée.',
+      });
 
       service.resetRhConversation(7);
 
@@ -483,7 +539,11 @@ describe('UnifiedAssistantService', () => {
     });
 
     it('getRhStats delegates to rhAssistantService', () => {
-      const stats: RhStats = { totalConversations: 3, totalMessages: 20, userId: 7 };
+      const stats: RhStats = {
+        totalConversations: 3,
+        totalMessages: 20,
+        userId: 7,
+      };
       rhAssistantService.getStats.mockResolvedValue(stats);
 
       service.getRhStats(7);
