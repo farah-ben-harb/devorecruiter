@@ -3,7 +3,7 @@ huggingface-hub==1.23.0
 langsmith==0.10.5
 numpy==2.2.6
 onnxruntime==1.23.2
-# Chroma 0.6.x requires the pre-6.0 PostHog capture API.
+# Keep telemetry dependency resolution explicit while the Chroma 1.x graph is validated.
 posthog==5.4.0
 protobuf==7.35.1
 scikit-learn==1.7.2
